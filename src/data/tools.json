@@ -160,14 +160,6 @@
       "tags": ["decoder", "encoder", "base64", "deobfuscation", "forensics"]
     },
     {
-      "id": "url-unshortener",
-      "name": "URL Unshortener",
-      "url": "https://unshorten.me/",
-      "categoryId": "decoding-transformation",
-      "description": "Expands shortened URLs (bit.ly, t.co, tinyurl…) to reveal the real destination without clicking the link; getlinkinfo.com is a well-known alternative.",
-      "tags": ["url", "unshortener", "redirect", "link-expansion", "safety"]
-    },
-    {
       "id": "virustotal",
       "name": "VirusTotal",
       "url": "https://www.virustotal.com/",
@@ -198,6 +190,14 @@
       "categoryId": "file-analysis",
       "description": "Interactive real-time malware sandbox: run a sample or URL in a live VM and watch its processes and network actions as they happen; the free tier is limited but very useful.",
       "tags": ["sandbox", "malware", "interactive", "network", "processes"]
+    },
+    {
+      "id": "url-unshortener",
+      "name": "URL Unshortener",
+      "url": "https://unshorten.me/",
+      "categoryId": "url-analysis",
+      "description": "Expands shortened URLs (bit.ly, t.co, tinyurl…) to reveal the real destination without clicking the link; getlinkinfo.com is a well-known alternative.",
+      "tags": ["url", "unshortener", "redirect", "link-expansion", "safety"]
     },
     {
       "id": "urlscan-io",

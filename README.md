@@ -28,6 +28,7 @@ npm run preview   # serve the production build locally
 | [ipapi.is](https://ipapi.is/) | Enrichment | IP intelligence: ASN, hosting/VPN detection |
 | [IPinfo](https://ipinfo.io/) | Enrichment | IP data: ASN, company, carrier, privacy detection |
 | [UnshortLink](https://unshortlink.com/fr) | URL analysis | Expand a shortened link to reveal its real destination |
+| [URL Unshortener](https://unshorten.me/) | URL analysis | Expand shortened links without clicking them |
 | [URLVoid](https://www.urlvoid.com/) | Reputation | Domain/URL reputation against dozens of blocklists |
 | [Sucuri SiteCheck](https://sitecheck.sucuri.net/) | Reputation | Website malware and blacklist scan |
 | [Control D Link Checker](https://controld.com/tools/website-link-checker) | Reputation | Check whether a link is safe to open |
@@ -38,7 +39,6 @@ npm run preview   # serve the production build locally
 | [MXToolbox](https://mxtoolbox.com) | DNS & domain recon | Email, SPF/DMARC, blacklists |
 | [ViewDNS.info](https://viewdns.info) | DNS & domain recon | WHOIS, IP history, port scan |
 | [CyberChef](https://gchq.github.io/CyberChef/) | Decoding & transformation | Decode/encode, deobfuscate JS, extract strings |
-| [URL Unshortener](https://unshorten.me/) | Decoding & transformation | Expand shortened links without clicking them |
 | [VirusTotal](https://www.virustotal.com/) | File & hash analysis | File/URL/IP reputation across dozens of AV engines |
 | [MalwareBazaar](https://bazaar.abuse.ch/) | File & hash analysis | Malware sample database searchable by hash/signature |
 | [Hybrid Analysis](https://www.hybrid-analysis.com/) | File & hash analysis | Free sandbox with behavioral analysis reports |
