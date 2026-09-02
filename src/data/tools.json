@@ -1,0 +1,150 @@
+{
+  "version": "1.1.0",
+  "updatedAt": "2026-01-09",
+  "categories": [
+    { "id": "geolocation", "label": "IP Geolocation" },
+    { "id": "reputation", "label": "Reputation & Fraud" },
+    { "id": "multi-analysis", "label": "Multi-Engine Analysis" },
+    { "id": "enrichment", "label": "IP Enrichment & ASN" },
+    { "id": "url-analysis", "label": "URL Analysis" },
+    { "id": "dns-recon", "label": "DNS & Domain Recon" }
+  ],
+  "tools": [
+    {
+      "id": "hostip",
+      "name": "HostIP",
+      "url": "https://www.hostip.fr/",
+      "categoryId": "geolocation",
+      "description": "French web service to geolocate an IP address: country, region, city, coordinates and ISP, displayed on a map.",
+      "tags": ["ip", "geolocation", "geoip", "map"]
+    },
+    {
+      "id": "abuseipdb",
+      "name": "AbuseIPDB",
+      "url": "https://www.abuseipdb.com/",
+      "categoryId": "reputation",
+      "description": "Community-driven database of malicious IP addresses: abuse reports filed by security professionals, confidence-of-abuse score, reported categories (brute force, scanning, spam…), ISP and usage type.",
+      "tags": ["ip", "reputation", "abuse", "blacklist", "threat-intelligence"]
+    },
+    {
+      "id": "scamalytics",
+      "name": "Scamalytics",
+      "url": "https://scamalytics.com/",
+      "categoryId": "reputation",
+      "description": "IP fraud-risk scoring service and AbuseIPDB alternative: fraud score, proxy / VPN / Tor detection, blacklist status and operator details for an IP address.",
+      "tags": ["ip", "reputation", "fraud", "proxy", "vpn", "tor"]
+    },
+    {
+      "id": "cyberbro",
+      "name": "Cyberbro",
+      "url": "https://demo.cyberbro.net/",
+      "categoryId": "multi-analysis",
+      "description": "Open-source analysis hub that checks an observable (IP, domain, URL, hash…) against multiple engines at once — reputation, reverse DNS, whois, web search — and aggregates the results. The link points to the project's public demo instance.",
+      "tags": ["observable", "ioc", "multi-engine", "aggregation"]
+    },
+    {
+      "id": "suip-biz",
+      "name": "suip.biz",
+      "url": "https://suip.biz/",
+      "categoryId": "multi-analysis",
+      "description": "Free online recon toolbox running many security tools from a single website: nmap port scanning, whois, DNS records, reverse IP, subdomain enumeration, HTTP header and CMS detection, and more.",
+      "tags": ["osint", "recon", "ports", "whois", "dns"]
+    },
+    {
+      "id": "ipapi-is",
+      "name": "ipapi.is",
+      "url": "https://ipapi.is/",
+      "categoryId": "enrichment",
+      "description": "IP intelligence lookup and API: precise geolocation, ASN, company and hosting details, plus VPN / proxy / datacenter detection and abuse contact for the queried IP.",
+      "tags": ["ip", "geolocation", "asn", "api", "hosting", "vpn"]
+    },
+    {
+      "id": "ipinfo-io",
+      "name": "IPinfo",
+      "url": "https://ipinfo.io/",
+      "categoryId": "enrichment",
+      "description": "IP data platform offering geolocation, ASN, company, carrier and privacy detection (VPN, proxy, Tor) through a clean web interface and API, with a free tier.",
+      "tags": ["ip", "geolocation", "asn", "api", "company", "carrier"]
+    },
+    {
+      "id": "unshortlink",
+      "name": "UnshortLink",
+      "url": "https://unshortlink.com/fr",
+      "categoryId": "url-analysis",
+      "description": "Expands shortened links (bit.ly, tinyurl, t.co…) to reveal the real destination URL before you click, helping spot redirects to suspicious domains.",
+      "tags": ["url", "unshortener", "redirect", "link-expansion", "safety"]
+    },
+    {
+      "id": "urlvoid",
+      "name": "URLVoid",
+      "url": "https://www.urlvoid.com/",
+      "categoryId": "reputation",
+      "description": "Website reputation scanner: checks a domain or URL against dozens of blocklists and reputation engines, and reports traffic, location, registrar and hosting details.",
+      "tags": ["domain", "url", "reputation", "blacklist", "phishing"]
+    },
+    {
+      "id": "sucuri-sitecheck",
+      "name": "Sucuri SiteCheck",
+      "url": "https://sitecheck.sucuri.net/",
+      "categoryId": "reputation",
+      "description": "Free remote website security scanner: checks a site for malware, injected spam and defacements, blacklist status, and outdated or vulnerable software.",
+      "tags": ["website", "malware", "blacklist", "security", "scanner"]
+    },
+    {
+      "id": "controld-link-checker",
+      "name": "Control D Website Link Checker",
+      "url": "https://controld.com/tools/website-link-checker",
+      "categoryId": "reputation",
+      "description": "Website link checker by Control D: tests whether a URL or domain is safe to open, flagging malware, phishing and other malicious categories before you visit it.",
+      "tags": ["url", "domain", "malware", "phishing", "safety"]
+    },
+    {
+      "id": "isitphishing",
+      "name": "IsItPhishing",
+      "url": "https://www.isitphishing.ai/",
+      "categoryId": "reputation",
+      "description": "AI-powered phishing detection: submit a URL to get a verdict on whether it is a phishing attempt, complementing blocklist-based checkers with machine-learning analysis.",
+      "tags": ["phishing", "ai", "url", "email", "detection"]
+    },
+    {
+      "id": "crtsh",
+      "name": "crt.sh",
+      "url": "https://crt.sh",
+      "categoryId": "dns-recon",
+      "description": "Certificate transparency search engine: enumerates subdomains and hostnames of a domain from issued TLS/SSL certificates, a classic passive recon source.",
+      "tags": ["subdomains", "certificates", "tls", "ct-logs", "osint"]
+    },
+    {
+      "id": "dnsdumpster",
+      "name": "DNSDumpster",
+      "url": "https://dnsdumpster.com",
+      "categoryId": "dns-recon",
+      "description": "Complete DNS cartography of a domain: subdomains, DNS records, mail and name servers, with a visual graph of the external footprint.",
+      "tags": ["dns", "subdomains", "mapping", "osint", "recon"]
+    },
+    {
+      "id": "dnslytics",
+      "name": "DNSlytics",
+      "url": "https://dnslytics.com",
+      "categoryId": "dns-recon",
+      "description": "DNS history and reverse IP lookup: past DNS records, hosting provider, domains co-hosted on the same IP, and ASN / domain analytics.",
+      "tags": ["dns", "history", "reverse-ip", "whois", "hosting"]
+    },
+    {
+      "id": "mxtoolbox",
+      "name": "MXToolbox",
+      "url": "https://mxtoolbox.com",
+      "categoryId": "dns-recon",
+      "description": "Email and DNS toolbox: MX, SPF, DMARC and DKIM lookups, blacklist checks on IPs and domains, SMTP diagnostics and header analysis.",
+      "tags": ["email", "mx", "spf", "dmarc", "blacklist", "dns"]
+    },
+    {
+      "id": "viewdns",
+      "name": "ViewDNS.info",
+      "url": "https://viewdns.info",
+      "categoryId": "dns-recon",
+      "description": "DNS and domain research toolbox: WHOIS, historical IP and DNS records, reverse IP lookup, port scan and many other lookups from one site.",
+      "tags": ["whois", "dns", "ip-history", "ports", "reverse-ip"]
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "name": "ioc-investigation-toolkit",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Curated directory of IOC investigation tools rendered as a website by a Svelte frontend.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "smoke": "node scripts/smoke-test.mjs"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.0.3",
+    "svelte": "^5.19.0",
+    "vite": "^6.0.11"
+  }
+}
