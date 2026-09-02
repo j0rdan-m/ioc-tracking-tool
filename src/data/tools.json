@@ -1,13 +1,18 @@
 {
-  "version": "1.1.0",
-  "updatedAt": "2026-01-09",
+  "version": "1.2.0",
+  "updatedAt": "2026-09-02",
   "categories": [
     { "id": "geolocation", "label": "IP Geolocation" },
     { "id": "reputation", "label": "Reputation & Fraud" },
     { "id": "multi-analysis", "label": "Multi-Engine Analysis" },
     { "id": "enrichment", "label": "IP Enrichment & ASN" },
     { "id": "url-analysis", "label": "URL Analysis" },
-    { "id": "dns-recon", "label": "DNS & Domain Recon" }
+    { "id": "dns-recon", "label": "DNS & Domain Recon" },
+    { "id": "decoding-transformation", "label": "Decoding & Transformation" },
+    { "id": "file-analysis", "label": "File & Hash Analysis" },
+    { "id": "threat-intelligence", "label": "Threat Intelligence" },
+    { "id": "email-analysis", "label": "Email Header Analysis" },
+    { "id": "network-bgp", "label": "Network & BGP" }
   ],
   "tools": [
     {
@@ -145,6 +150,118 @@
       "categoryId": "dns-recon",
       "description": "DNS and domain research toolbox: WHOIS, historical IP and DNS records, reverse IP lookup, port scan and many other lookups from one site.",
       "tags": ["whois", "dns", "ip-history", "ports", "reverse-ip"]
+    },
+    {
+      "id": "cyberchef",
+      "name": "CyberChef",
+      "url": "https://gchq.github.io/CyberChef/",
+      "categoryId": "decoding-transformation",
+      "description": "GCHQ's \"Swiss Army knife\" of data analysis and a must-have for any investigation: decode Base64, URL-encode/decode, deobfuscate JavaScript, extract strings, parse timestamps and chain hundreds of operations into recipes.",
+      "tags": ["decoder", "encoder", "base64", "deobfuscation", "forensics"]
+    },
+    {
+      "id": "url-unshortener",
+      "name": "URL Unshortener",
+      "url": "https://unshorten.me/",
+      "categoryId": "decoding-transformation",
+      "description": "Expands shortened URLs (bit.ly, t.co, tinyurl…) to reveal the real destination without clicking the link; getlinkinfo.com is a well-known alternative.",
+      "tags": ["url", "unshortener", "redirect", "link-expansion", "safety"]
+    },
+    {
+      "id": "virustotal",
+      "name": "VirusTotal",
+      "url": "https://www.virustotal.com/",
+      "categoryId": "file-analysis",
+      "description": "The absolute reference for the reputation of files, IPs, domains and URLs: a hash or sample is checked against dozens of antivirus engines, with behavioral and community context.",
+      "tags": ["hash", "malware", "antivirus", "reputation", "multi-engine", "ioc"]
+    },
+    {
+      "id": "malwarebazaar",
+      "name": "MalwareBazaar",
+      "url": "https://bazaar.abuse.ch/",
+      "categoryId": "file-analysis",
+      "description": "abuse.ch's open malware sample database: look up recent samples and their signatures by MD5, SHA1 or SHA256 hash, tag, family or actor.",
+      "tags": ["malware", "hash", "samples", "database", "threat-intelligence"]
+    },
+    {
+      "id": "hybrid-analysis",
+      "name": "Hybrid Analysis",
+      "url": "https://www.hybrid-analysis.com/",
+      "categoryId": "file-analysis",
+      "description": "Free and powerful online sandbox: submit a suspicious file and get a behavioral analysis report with IOCs, network activity and a malware verdict.",
+      "tags": ["sandbox", "malware", "behavioral-analysis", "hash", "ioc"]
+    },
+    {
+      "id": "anyrun",
+      "name": "ANY.RUN",
+      "url": "https://any.run/",
+      "categoryId": "file-analysis",
+      "description": "Interactive real-time malware sandbox: run a sample or URL in a live VM and watch its processes and network actions as they happen; the free tier is limited but very useful.",
+      "tags": ["sandbox", "malware", "interactive", "network", "processes"]
+    },
+    {
+      "id": "urlscan-io",
+      "name": "urlscan.io",
+      "url": "https://urlscan.io/",
+      "categoryId": "url-analysis",
+      "description": "Scans a URL safely and returns a screenshot, the DOM, network requests and the IOCs of the page — indispensable for phishing analysis.",
+      "tags": ["url", "phishing", "screenshot", "dom", "network", "ioc"]
+    },
+    {
+      "id": "phishtank",
+      "name": "PhishTank",
+      "url": "https://www.phishtank.com/",
+      "categoryId": "url-analysis",
+      "description": "Collaborative database specialized in phishing: check whether a URL is a known phishing page and contribute verdicts, with data available for integration.",
+      "tags": ["phishing", "url", "database", "blacklist", "community"]
+    },
+    {
+      "id": "alienvault-otx",
+      "name": "AlienVault OTX",
+      "url": "https://otx.alienvault.com/",
+      "categoryId": "threat-intelligence",
+      "description": "Open Threat Exchange, one of the largest IoC-sharing communities: check whether an indicator is known in recent threat pulses and follow adversary groups.",
+      "tags": ["ioc", "threat-intelligence", "pulses", "community", "osint"]
+    },
+    {
+      "id": "threatfox",
+      "name": "ThreatFox",
+      "url": "https://threatfox.abuse.ch/",
+      "categoryId": "threat-intelligence",
+      "description": "abuse.ch platform dedicated to IOCs associated with malware: search and share C2 servers, distribution URLs and their malware families.",
+      "tags": ["ioc", "c2", "malware", "threat-intelligence", "database"]
+    },
+    {
+      "id": "intelligence-x",
+      "name": "Intelligence X",
+      "url": "https://intelx.io/",
+      "categoryId": "threat-intelligence",
+      "description": "Powerful search engine over data leaks, pastes, the dark web, historical WHOIS and DNS records, with pivots on emails, domains, IPs and phone numbers.",
+      "tags": ["osint", "leaks", "dark-web", "whois", "dns", "search-engine"]
+    },
+    {
+      "id": "microsoft-message-header-analyzer",
+      "name": "Microsoft Message Header Analyzer",
+      "url": "https://mha.azurewebsites.net/",
+      "categoryId": "email-analysis",
+      "description": "Paste the raw headers of an email to make them readable: hop-by-hop route, delays between servers and SPF / DKIM / DMARC verdicts.",
+      "tags": ["email", "headers", "spf", "dkim", "dmarc", "forensics"]
+    },
+    {
+      "id": "google-messageheader",
+      "name": "Google Admin Toolbox Messageheader",
+      "url": "https://toolbox.googleapps.com/apps/messageheader/",
+      "categoryId": "email-analysis",
+      "description": "Google Admin Toolbox alternative to Microsoft's analyzer: paste raw headers to visualize the email path, its delays and authentication results.",
+      "tags": ["email", "headers", "spf", "dkim", "dmarc", "routing"]
+    },
+    {
+      "id": "he-bgp-toolkit",
+      "name": "Hurricane Electric BGP Toolkit",
+      "url": "https://bgp.he.net/",
+      "categoryId": "network-bgp",
+      "description": "Far more complete than basic IP tools for network forensics: BGP routes, announced prefixes, ASN history and peering for any IP, prefix or autonomous system.",
+      "tags": ["bgp", "asn", "prefixes", "routing", "network", "ip"]
     }
   ]
 }
