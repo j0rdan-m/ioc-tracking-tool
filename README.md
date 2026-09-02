@@ -92,6 +92,15 @@ Append an entry to `src/data/tools.json`:
 If the category does not exist yet, add it to `categories`; it automatically gets its own filter
 pill and accent color (derived from the category id, see `src/lib/utils/color.js`).
 
+## Deployment (GitHub Pages)
+
+The site is published on every push to `main` by the workflow
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml): install → smoke test → build → deploy.
+
+One-time repository setting: **Settings → Pages → Build and deployment → Source: "GitHub Actions"**.
+The Vite `base` in [`vite.config.js`](vite.config.js) must match the Pages subpath
+(`/ioc-tracking-tool/`); switch it to `/` when using a custom domain.
+
 ## Architecture notes (dependency injection)
 
 External dependencies are never hard-imported deep inside components:
