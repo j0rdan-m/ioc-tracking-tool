@@ -1,5 +1,5 @@
 {
-  "version": "1.2.0",
+  "version": "1.3.0",
   "updatedAt": "2026-09-02",
   "categories": [
     { "id": "geolocation", "label": "IP Geolocation" },
@@ -14,9 +14,17 @@
     { "id": "email-analysis", "label": "Email Header Analysis" },
     { "id": "network-bgp", "label": "Network & BGP" }
   ],
+  "iocTypes": [
+    { "id": "ip", "label": "IP address" },
+    { "id": "domain", "label": "Domain & DNS" },
+    { "id": "url", "label": "URL" },
+    { "id": "file", "label": "File & hash" },
+    { "id": "email", "label": "Email" }
+  ],
   "tools": [
     {
       "id": "hostip",
+      "iocTypes": ["ip"],
       "name": "HostIP",
       "url": "https://www.hostip.fr/",
       "categoryId": "geolocation",
@@ -25,6 +33,7 @@
     },
     {
       "id": "abuseipdb",
+      "iocTypes": ["ip"],
       "name": "AbuseIPDB",
       "url": "https://www.abuseipdb.com/",
       "categoryId": "reputation",
@@ -33,6 +42,7 @@
     },
     {
       "id": "scamalytics",
+      "iocTypes": ["ip"],
       "name": "Scamalytics",
       "url": "https://scamalytics.com/",
       "categoryId": "reputation",
@@ -41,6 +51,7 @@
     },
     {
       "id": "cyberbro",
+      "iocTypes": ["ip", "domain", "url", "file"],
       "name": "Cyberbro",
       "url": "https://demo.cyberbro.net/",
       "categoryId": "multi-analysis",
@@ -49,6 +60,7 @@
     },
     {
       "id": "suip-biz",
+      "iocTypes": ["ip", "domain", "url"],
       "name": "suip.biz",
       "url": "https://suip.biz/",
       "categoryId": "multi-analysis",
@@ -57,6 +69,7 @@
     },
     {
       "id": "ipapi-is",
+      "iocTypes": ["ip"],
       "name": "ipapi.is",
       "url": "https://ipapi.is/",
       "categoryId": "enrichment",
@@ -65,6 +78,7 @@
     },
     {
       "id": "ipinfo-io",
+      "iocTypes": ["ip"],
       "name": "IPinfo",
       "url": "https://ipinfo.io/",
       "categoryId": "enrichment",
@@ -73,6 +87,7 @@
     },
     {
       "id": "unshortlink",
+      "iocTypes": ["url"],
       "name": "UnshortLink",
       "url": "https://unshortlink.com/fr",
       "categoryId": "url-analysis",
@@ -81,6 +96,7 @@
     },
     {
       "id": "urlvoid",
+      "iocTypes": ["domain", "url"],
       "name": "URLVoid",
       "url": "https://www.urlvoid.com/",
       "categoryId": "reputation",
@@ -89,6 +105,7 @@
     },
     {
       "id": "sucuri-sitecheck",
+      "iocTypes": ["domain", "url"],
       "name": "Sucuri SiteCheck",
       "url": "https://sitecheck.sucuri.net/",
       "categoryId": "reputation",
@@ -97,6 +114,7 @@
     },
     {
       "id": "controld-link-checker",
+      "iocTypes": ["url", "domain"],
       "name": "Control D Website Link Checker",
       "url": "https://controld.com/tools/website-link-checker",
       "categoryId": "reputation",
@@ -105,6 +123,7 @@
     },
     {
       "id": "isitphishing",
+      "iocTypes": ["url"],
       "name": "IsItPhishing",
       "url": "https://www.isitphishing.ai/",
       "categoryId": "reputation",
@@ -113,6 +132,7 @@
     },
     {
       "id": "crtsh",
+      "iocTypes": ["domain"],
       "name": "crt.sh",
       "url": "https://crt.sh",
       "categoryId": "dns-recon",
@@ -121,6 +141,7 @@
     },
     {
       "id": "dnsdumpster",
+      "iocTypes": ["domain"],
       "name": "DNSDumpster",
       "url": "https://dnsdumpster.com",
       "categoryId": "dns-recon",
@@ -129,6 +150,7 @@
     },
     {
       "id": "dnslytics",
+      "iocTypes": ["domain", "ip"],
       "name": "DNSlytics",
       "url": "https://dnslytics.com",
       "categoryId": "dns-recon",
@@ -137,6 +159,7 @@
     },
     {
       "id": "mxtoolbox",
+      "iocTypes": ["domain", "ip", "email"],
       "name": "MXToolbox",
       "url": "https://mxtoolbox.com",
       "categoryId": "dns-recon",
@@ -145,6 +168,7 @@
     },
     {
       "id": "viewdns",
+      "iocTypes": ["domain", "ip"],
       "name": "ViewDNS.info",
       "url": "https://viewdns.info",
       "categoryId": "dns-recon",
@@ -153,6 +177,7 @@
     },
     {
       "id": "cyberchef",
+      "iocTypes": ["file", "email", "url"],
       "name": "CyberChef",
       "url": "https://gchq.github.io/CyberChef/",
       "categoryId": "decoding-transformation",
@@ -161,6 +186,7 @@
     },
     {
       "id": "virustotal",
+      "iocTypes": ["file", "ip", "domain", "url"],
       "name": "VirusTotal",
       "url": "https://www.virustotal.com/",
       "categoryId": "file-analysis",
@@ -169,6 +195,7 @@
     },
     {
       "id": "malwarebazaar",
+      "iocTypes": ["file"],
       "name": "MalwareBazaar",
       "url": "https://bazaar.abuse.ch/",
       "categoryId": "file-analysis",
@@ -177,6 +204,7 @@
     },
     {
       "id": "hybrid-analysis",
+      "iocTypes": ["file", "url"],
       "name": "Hybrid Analysis",
       "url": "https://www.hybrid-analysis.com/",
       "categoryId": "file-analysis",
@@ -185,6 +213,7 @@
     },
     {
       "id": "anyrun",
+      "iocTypes": ["file", "url"],
       "name": "ANY.RUN",
       "url": "https://any.run/",
       "categoryId": "file-analysis",
@@ -193,6 +222,7 @@
     },
     {
       "id": "url-unshortener",
+      "iocTypes": ["url"],
       "name": "URL Unshortener",
       "url": "https://unshorten.me/",
       "categoryId": "url-analysis",
@@ -201,6 +231,7 @@
     },
     {
       "id": "urlscan-io",
+      "iocTypes": ["url", "domain"],
       "name": "urlscan.io",
       "url": "https://urlscan.io/",
       "categoryId": "url-analysis",
@@ -209,6 +240,7 @@
     },
     {
       "id": "phishtank",
+      "iocTypes": ["url"],
       "name": "PhishTank",
       "url": "https://www.phishtank.com/",
       "categoryId": "url-analysis",
@@ -217,6 +249,7 @@
     },
     {
       "id": "alienvault-otx",
+      "iocTypes": ["ip", "domain", "url", "file", "email"],
       "name": "AlienVault OTX",
       "url": "https://otx.alienvault.com/",
       "categoryId": "threat-intelligence",
@@ -225,6 +258,7 @@
     },
     {
       "id": "threatfox",
+      "iocTypes": ["ip", "domain", "url", "file"],
       "name": "ThreatFox",
       "url": "https://threatfox.abuse.ch/",
       "categoryId": "threat-intelligence",
@@ -233,6 +267,7 @@
     },
     {
       "id": "intelligence-x",
+      "iocTypes": ["ip", "domain", "url", "file", "email"],
       "name": "Intelligence X",
       "url": "https://intelx.io/",
       "categoryId": "threat-intelligence",
@@ -241,6 +276,7 @@
     },
     {
       "id": "microsoft-message-header-analyzer",
+      "iocTypes": ["email"],
       "name": "Microsoft Message Header Analyzer",
       "url": "https://mha.azurewebsites.net/",
       "categoryId": "email-analysis",
@@ -249,6 +285,7 @@
     },
     {
       "id": "google-messageheader",
+      "iocTypes": ["email"],
       "name": "Google Admin Toolbox Messageheader",
       "url": "https://toolbox.googleapps.com/apps/messageheader/",
       "categoryId": "email-analysis",
@@ -257,6 +294,7 @@
     },
     {
       "id": "he-bgp-toolkit",
+      "iocTypes": ["ip", "domain"],
       "name": "Hurricane Electric BGP Toolkit",
       "url": "https://bgp.he.net/",
       "categoryId": "network-bgp",

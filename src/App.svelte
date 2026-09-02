@@ -1,11 +1,16 @@
 <script>
   import CategoryFilter from './lib/components/CategoryFilter.svelte';
+  import IocTypeFilter from './lib/components/IocTypeFilter.svelte';
   import SearchBar from './lib/components/SearchBar.svelte';
   import ToolGrid from './lib/components/ToolGrid.svelte';
   import { createAppContainer } from './lib/bootstrap.js';
   import { inject, provideContainer } from './lib/di/provide.js';
   import { DI_TOKENS } from './lib/di/tokens.js';
-  import { countToolsByCategory, filterTools } from './lib/utils/filter-tools.js';
+  import {
+    countToolsByCategory,
+    countToolsByIocType,
+    filterTools,
+  } from './lib/utils/filter-tools.js';
 
   let { container } = $props();
   if (!container) {
@@ -21,6 +26,7 @@
 
   let query = $state('');
   let selectedCategoryId = $state('all');
+  let selectedIocTypeId = $state('all');
   let catalogPromise = $state(toolRepository.getCatalog());
 
   function retryLoadingCatalog() {
@@ -43,11 +49,18 @@
     {#await catalogPromise}
       <p class="status" role="status">Loading the tool catalog…</p>
     {:then catalog}
-      {@const filteredTools = filterTools(catalog.tools, query, selectedCategoryId)}
+      {@const filteredTools = filterTools(catalog.tools, query, selectedCategoryId, selectedIocTypeId)}
       {@const categoryLabelById = new Map(
         catalog.categories.map((category) => [category.id, category.label]),
       )}
-      {@const countByCategory = countToolsByCategory(catalog.tools)}
+      {@const iocLabelById = new Map(catalog.iocTypes.map((iocType) => [iocType.id, iocType.label]))}
+      <!-- Faceted counts: each filter row reflects the query and the other facet. -->
+      {@const countByCategory = countToolsByCategory(
+        filterTools(catalog.tools, query, 'all', selectedIocTypeId),
+      )}
+      {@const countByIocType = countToolsByIocType(
+        filterTools(catalog.tools, query, selectedCategoryId, 'all'),
+      )}
 
       <section class="toolbar">
         <SearchBar bind:value={query} />
@@ -56,9 +69,14 @@
           bind:selectedId={selectedCategoryId}
           {countByCategory}
         />
+        <IocTypeFilter
+          iocTypes={catalog.iocTypes}
+          bind:selectedId={selectedIocTypeId}
+          {countByIocType}
+        />
       </section>
 
-      <ToolGrid tools={filteredTools} {categoryLabelById} />
+      <ToolGrid tools={filteredTools} {categoryLabelById} {iocLabelById} />
 
       <p class="status status--muted" role="status">
         Showing {filteredTools.length} of {catalog.tools.length} tools.

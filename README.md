@@ -4,8 +4,9 @@ A lightweight Svelte (JavaScript) web app presenting a curated directory of onli
 pivot on **Indicators of Compromise (IOCs)** during cybersecurity forensic investigations.
 
 The catalog lives in a single JSON file — [`src/data/tools.json`](src/data/tools.json) — where each
-entry explains what the tool does and links to it. The Svelte frontend renders the catalog with
-free-text search and category filters.
+entry explains what the tool does, lists the IoC types it handles, and links to it. The Svelte
+frontend renders the catalog with free-text search, category filters and IoC-type filters
+(IP, domain & DNS, URL, file & hash, email).
 
 ## Getting started
 
@@ -84,6 +85,7 @@ Append an entry to `src/data/tools.json`:
   "name": "Example Tool",
   "url": "https://example.com/",
   "categoryId": "url-analysis",
+  "iocTypes": ["url", "domain"],
   "description": "One or two sentences explaining what the tool does and when to use it.",
   "tags": ["url", "example"]
 }
@@ -91,6 +93,10 @@ Append an entry to `src/data/tools.json`:
 
 If the category does not exist yet, add it to `categories`; it automatically gets its own filter
 pill and accent color (derived from the category id, see `src/lib/utils/color.js`).
+
+`iocTypes` powers the second filter row: list every IoC type the tool can handle among `ip`,
+`domain`, `url`, `file` and `email` (defined at the top of the catalog). If a type is missing,
+add it to the `iocTypes` definitions — it automatically gets its own filter pill.
 
 ## Deployment (GitHub Pages)
 

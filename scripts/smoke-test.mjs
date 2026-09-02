@@ -11,13 +11,13 @@ import { DI_TOKENS } from '../src/lib/di/tokens.js';
 import { HttpToolDataSource } from '../src/lib/services/http-tool-data-source.js';
 import { StaticToolDataSource } from '../src/lib/services/static-tool-data-source.js';
 import { ToolRepository } from '../src/lib/services/tool-repository.js';
-import { countToolsByCategory, filterTools } from '../src/lib/utils/filter-tools.js';
+import { countToolsByCategory, countToolsByIocType, filterTools } from '../src/lib/utils/filter-tools.js';
 
 const catalogPath = new URL('../src/data/tools.json', import.meta.url);
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
 
 // --- Catalog schema ---
-const REQUIRED_FIELDS = ['id', 'name', 'url', 'categoryId', 'description', 'tags'];
+const REQUIRED_FIELDS = ['id', 'name', 'url', 'categoryId', 'iocTypes', 'description', 'tags'];
 for (const tool of catalog.tools) {
   for (const field of REQUIRED_FIELDS) {
     if (!(field in tool) || tool[field] === '') {
@@ -30,11 +30,20 @@ for (const tool of catalog.tools) {
   if (!Array.isArray(tool.tags) || tool.tags.length === 0) {
     throw new Error(`Catalog: "tags" must be a non-empty array on "${tool.id}".`);
   }
+  if (!Array.isArray(tool.iocTypes) || tool.iocTypes.length === 0) {
+    throw new Error(`Catalog: "iocTypes" must be a non-empty array on "${tool.id}".`);
+  }
 }
 const categoryIds = new Set(catalog.categories.map((category) => category.id));
+const iocTypeIds = new Set(catalog.iocTypes.map((iocType) => iocType.id));
 for (const tool of catalog.tools) {
   if (!categoryIds.has(tool.categoryId)) {
     throw new Error(`Catalog: unknown categoryId "${tool.categoryId}" on "${tool.id}".`);
+  }
+  for (const iocTypeId of tool.iocTypes) {
+    if (!iocTypeIds.has(iocTypeId)) {
+      throw new Error(`Catalog: unknown iocType "${iocTypeId}" on "${tool.id}".`);
+    }
   }
 }
 const ids = catalog.tools.map((tool) => tool.id);
@@ -77,6 +86,20 @@ if (reputationMatches.join(',') !== 'abuseipdb,scamalytics,urlvoid,sucuri-sitech
 }
 if (countToolsByCategory(loaded.tools).get('all') !== 31) {
   throw new Error('countToolsByCategory: global count failed.');
+}
+const emailMatches = filterTools(loaded.tools, '', 'all', 'email').map((tool) => tool.id);
+if (
+  emailMatches.join(',') !==
+  'mxtoolbox,cyberchef,alienvault-otx,intelligence-x,microsoft-message-header-analyzer,google-messageheader'
+) {
+  throw new Error(`filterTools: IoC type filter failed, got [${emailMatches}].`);
+}
+const emailInDnsRecon = filterTools(loaded.tools, '', 'dns-recon', 'email').map((tool) => tool.id);
+if (emailInDnsRecon.join(',') !== 'mxtoolbox') {
+  throw new Error(`filterTools: combined category + IoC filter failed, got [${emailInDnsRecon}].`);
+}
+if (countToolsByIocType(loaded.tools).get('file') !== 9) {
+  throw new Error('countToolsByIocType: file count failed.');
 }
 
 // --- fetch injected into HttpToolDataSource ---

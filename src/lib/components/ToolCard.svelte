@@ -4,16 +4,18 @@
   import { hueFromString } from '../utils/color.js';
 
   /**
-   * One tool card: category, description, tags, external link and copy action.
+   * One tool card: category, IoC types, description, tags, external link and copy action.
    * The clipboard service is injected — no browser API is used directly here.
    *
-   * @type {{ tool: import('../types.js').Tool, categoryLabel: string }}
+   * @type {{ tool: import('../types.js').Tool, categoryLabel: string,
+   *          iocLabelById: Map<string, string> }}
    */
-  let { tool, categoryLabel } = $props();
+  let { tool, categoryLabel, iocLabelById } = $props();
 
   /** @type {import('../services/clipboard.js').ClipboardService} */
   const clipboard = inject(DI_TOKENS.clipboard);
   const categoryHue = $derived(hueFromString(tool.categoryId));
+  const iocLabels = $derived(tool.iocTypes.map((id) => iocLabelById.get(id) ?? id));
 
   /** @type {'idle' | 'copied' | 'failed'} */
   let copyState = $state('idle');
@@ -35,6 +37,11 @@
 
 <article class="card" style="--category-hue: {categoryHue}">
   <span class="card__category">{categoryLabel}</span>
+  <ul class="card__ioc" aria-label="IoC types handled by this tool">
+    {#each iocLabels as iocLabel (iocLabel)}
+      <li class="card__ioc-type">{iocLabel}</li>
+    {/each}
+  </ul>
   <h2 class="card__name">{tool.name}</h2>
   <p class="card__description">{tool.description}</p>
   <ul class="card__tags">
@@ -98,6 +105,26 @@
     border-radius: 999px;
     background: hsl(var(--category-hue) 80% 60%);
     box-shadow: 0 0 8px hsl(var(--category-hue) 80% 60% / 0.8);
+  }
+
+  .card__ioc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: -0.35rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .card__ioc-type {
+    padding: 0.08rem 0.5rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: hsl(var(--category-hue) 70% 72%);
+    background: hsl(var(--category-hue) 70% 55% / 0.12);
+    border: 1px solid hsl(var(--category-hue) 70% 55% / 0.3);
+    border-radius: 999px;
   }
 
   .card__name {

@@ -16,18 +16,21 @@ function matchesQuery(tool, normalizedQuery) {
 }
 
 /**
- * Filters tools by free-text query (name, description, tags, URL) and category.
+ * Filters tools by free-text query (name, description, tags, URL), category and
+ * IoC type. Facets combine with AND; 'all' disables a facet.
  *
  * @param {import('../types.js').Tool[]} tools
  * @param {string} query Raw user input.
  * @param {string} categoryId Category identifier, or 'all' to keep everything.
+ * @param {string} [iocTypeId='all'] IoC type identifier, or 'all' to keep everything.
  * @returns {import('../types.js').Tool[]}
  */
-export function filterTools(tools, query, categoryId) {
+export function filterTools(tools, query, categoryId, iocTypeId = 'all') {
   const normalizedQuery = query.trim().toLowerCase();
   return tools.filter((tool) => {
     const matchesCategory = categoryId === 'all' || tool.categoryId === categoryId;
-    return matchesCategory && matchesQuery(tool, normalizedQuery);
+    const matchesIocType = iocTypeId === 'all' || tool.iocTypes.includes(iocTypeId);
+    return matchesCategory && matchesIocType && matchesQuery(tool, normalizedQuery);
   });
 }
 
@@ -42,6 +45,24 @@ export function countToolsByCategory(tools) {
   const counts = new Map([['all', tools.length]]);
   for (const tool of tools) {
     counts.set(tool.categoryId, (counts.get(tool.categoryId) ?? 0) + 1);
+  }
+  return counts;
+}
+
+/**
+ * Counts tools per IoC type id (a tool handling several types counts once per
+ * type), plus an 'all' entry for the global count.
+ *
+ * @param {import('../types.js').Tool[]} tools
+ * @returns {Map<string, number>}
+ */
+export function countToolsByIocType(tools) {
+  /** @type {Map<string, number>} */
+  const counts = new Map([['all', tools.length]]);
+  for (const tool of tools) {
+    for (const iocTypeId of tool.iocTypes) {
+      counts.set(iocTypeId, (counts.get(iocTypeId) ?? 0) + 1);
+    }
   }
   return counts;
 }

@@ -4,9 +4,10 @@
   /**
    * Responsive card grid for the filtered tools, with an empty state.
    *
-   * @type {{ tools: import('../types.js').Tool[], categoryLabelById: Map<string, string> }}
+   * @type {{ tools: import('../types.js').Tool[], categoryLabelById: Map<string, string>,
+   *          iocLabelById: Map<string, string> }}
    */
-  let { tools, categoryLabelById } = $props();
+  let { tools, categoryLabelById, iocLabelById } = $props();
 </script>
 
 {#if tools.length === 0}
@@ -15,7 +16,11 @@
   <ul class="grid">
     {#each tools as tool (tool.id)}
       <li>
-        <ToolCard {tool} categoryLabel={categoryLabelById.get(tool.categoryId) ?? 'Uncategorized'} />
+        <ToolCard
+          {tool}
+          categoryLabel={categoryLabelById.get(tool.categoryId) ?? 'Uncategorized'}
+          iocLabelById={iocLabelById}
+        />
       </li>
     {/each}
   </ul>
