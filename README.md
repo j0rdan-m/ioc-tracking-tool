@@ -6,7 +6,9 @@ pivot on **Indicators of Compromise (IOCs)** during cybersecurity forensic inves
 The catalog lives in a single JSON file — [`src/data/tools.json`](src/data/tools.json) — where each
 entry explains what the tool does, lists the IoC types it handles, and links to it. The Svelte
 frontend renders the catalog with free-text search, category filters and IoC-type filters
-(IP, domain & DNS, URL, file & hash, email).
+(IP, domain & DNS, URL, file & hash, email). Pasting an observable (IP, hash, domain, email or
+URL) auto-detects its IoC type, pre-applies the matching filter and searches by type instead of
+by keyword (`src/lib/utils/detect-ioc-type.js`).
 
 ## Getting started
 

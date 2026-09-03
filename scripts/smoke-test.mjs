@@ -12,6 +12,7 @@ import { HttpToolDataSource } from '../src/lib/services/http-tool-data-source.js
 import { StaticToolDataSource } from '../src/lib/services/static-tool-data-source.js';
 import { ToolRepository } from '../src/lib/services/tool-repository.js';
 import { countToolsByCategory, countToolsByIocType, filterTools } from '../src/lib/utils/filter-tools.js';
+import { detectIocType } from '../src/lib/utils/detect-ioc-type.js';
 
 const catalogPath = new URL('../src/data/tools.json', import.meta.url);
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
@@ -100,6 +101,40 @@ if (emailInDnsRecon.join(',') !== 'mxtoolbox') {
 }
 if (countToolsByIocType(loaded.tools).get('file') !== 9) {
   throw new Error('countToolsByIocType: file count failed.');
+}
+
+// --- IoC type detection ---
+const detectionSamples = [
+  ['8.8.8.8', 'ip'],
+  ['192.168.0.1', 'ip'],
+  ['2001:db8::1', 'ip'],
+  ['::1', 'ip'],
+  ['999.999.1.1', null],
+  ['44d88612fea8a8f36de82e1278abb02f', 'file'],
+  ['a9993e364706816aba3e25717850c26c9cd0d89d', 'file'],
+  ['a591a6d40bf420404a011733cfb7b190d62c65bf0bcda32b57b277d9ad9f146e', 'file'],
+  ['EXAMPLE.COM', 'domain'],
+  ['mail.evil-example.co.uk', 'domain'],
+  ['user@domain.tld', 'email'],
+  ['https://phishing.example.com/login', 'url'],
+  ['http://8.8.8.8/pay', 'url'],
+  ['evil.com/login', 'url'],
+  ['  8.8.8.8  ', 'ip'],
+  ['just-a-keyword', null],
+  ['cyberchef', null],
+  ['', null],
+];
+for (const [sample, expected] of detectionSamples) {
+  const actual = detectIocType(sample);
+  if (actual !== expected) {
+    throw new Error(`detectIocType: "${sample}" should be ${expected}, got ${actual}.`);
+  }
+}
+for (const [sample] of detectionSamples) {
+  const detected = detectIocType(sample);
+  if (detected !== null && !iocTypeIds.has(detected)) {
+    throw new Error(`detectIocType: unknown IoC type "${detected}" for "${sample}".`);
+  }
 }
 
 // --- fetch injected into HttpToolDataSource ---

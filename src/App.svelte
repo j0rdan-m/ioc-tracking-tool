@@ -6,6 +6,8 @@
   import { createAppContainer } from './lib/bootstrap.js';
   import { inject, provideContainer } from './lib/di/provide.js';
   import { DI_TOKENS } from './lib/di/tokens.js';
+  import { untrack } from 'svelte';
+  import { detectIocType } from './lib/utils/detect-ioc-type.js';
   import {
     countToolsByCategory,
     countToolsByIocType,
@@ -29,6 +31,35 @@
   let selectedIocTypeId = $state('all');
   let catalogPromise = $state(toolRepository.getCatalog());
 
+  // IoC shape detected in the current query (null when it is not an observable).
+  let detectedIocTypeId = $derived(detectIocType(query));
+
+  // Pre-apply the matching IoC-type pill whenever the detected type changes.
+  // When the query stops looking like an IoC, the pill is cleared only if it
+  // still holds the auto-applied value, so a manual pick survives. untrack()
+  // keeps the effect driven by the query alone: writing the pill state back
+  // cannot re-trigger the effect.
+  let lastAppliedDetection = null;
+  $effect(() => {
+    const detected = detectedIocTypeId;
+    untrack(() => {
+      if (detected) {
+        if (detected !== lastAppliedDetection) {
+          lastAppliedDetection = detected;
+          selectedIocTypeId = detected;
+        }
+        return;
+      }
+      if (lastAppliedDetection !== null) {
+        const wasAutoApplied = selectedIocTypeId === lastAppliedDetection;
+        lastAppliedDetection = null;
+        if (wasAutoApplied) {
+          selectedIocTypeId = 'all';
+        }
+      }
+    });
+  });
+
   function retryLoadingCatalog() {
     catalogPromise = toolRepository.getCatalog();
   }
@@ -49,17 +80,20 @@
     {#await catalogPromise}
       <p class="status" role="status">Loading the tool catalog…</p>
     {:then catalog}
-      {@const filteredTools = filterTools(catalog.tools, query, selectedCategoryId, selectedIocTypeId)}
+      <!-- When the query is a recognizable IoC it is not a keyword: skip the
+           text match and let the auto-applied IoC-type filter drive the list. -->
+      {@const queryForText = detectedIocTypeId ? '' : query}
+      {@const filteredTools = filterTools(catalog.tools, queryForText, selectedCategoryId, selectedIocTypeId)}
       {@const categoryLabelById = new Map(
         catalog.categories.map((category) => [category.id, category.label]),
       )}
       {@const iocLabelById = new Map(catalog.iocTypes.map((iocType) => [iocType.id, iocType.label]))}
       <!-- Faceted counts: each filter row reflects the query and the other facet. -->
       {@const countByCategory = countToolsByCategory(
-        filterTools(catalog.tools, query, 'all', selectedIocTypeId),
+        filterTools(catalog.tools, queryForText, 'all', selectedIocTypeId),
       )}
       {@const countByIocType = countToolsByIocType(
-        filterTools(catalog.tools, query, selectedCategoryId, 'all'),
+        filterTools(catalog.tools, queryForText, selectedCategoryId, 'all'),
       )}
 
       <section class="toolbar">
@@ -75,6 +109,17 @@
           {countByIocType}
         />
       </section>
+
+      {#if detectedIocTypeId}
+        <p class="status status--muted" role="status">
+          This query looks like <strong>{iocLabelById.get(detectedIocTypeId)}</strong>
+          {#if selectedIocTypeId === detectedIocTypeId}
+            — the matching IoC-type filter was applied automatically (pick another pill to override).
+          {:else}
+            — the IoC-type pill you picked stays in effect.
+          {/if}
+        </p>
+      {/if}
 
       <ToolGrid tools={filteredTools} {categoryLabelById} {iocLabelById} />
 
