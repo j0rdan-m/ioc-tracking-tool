@@ -156,6 +156,15 @@
     border-bottom: 1px solid var(--color-border);
   }
 
+  /* On small screens the search bar and the filter pills wrap into many rows:
+     pinning them would eat most of the viewport, so the toolbar scrolls away
+     with the content instead of staying on top. */
+  @media (max-width: 48rem) {
+    .toolbar {
+      position: static;
+    }
+  }
+
   .status {
     margin: 0;
     color: var(--color-text-muted);
