@@ -66,3 +66,25 @@ export function countToolsByIocType(tools) {
   }
   return counts;
 }
+
+/**
+ * Pure state transition for the auto-applied IoC-type filter, consumed by the
+ * App effect. While the query is a recognizable IoC, the filter always follows
+ * the detected type (re-pasting an observable re-applies it, even after a
+ * manual pick); when it stops being one, the filter resets to 'all' only if it
+ * still holds the auto-applied value, so a manual pick survives.
+ *
+ * @param {string|null} detected IoC type detected in the query (null if none).
+ * @param {string} selectedId Currently selected IoC-type filter id.
+ * @param {string|null} lastAuto IoC type auto-applied by the previous transition.
+ * @returns {{ selectedId: string, lastAuto: string|null }}
+ */
+export function nextAutoIocFilter(detected, selectedId, lastAuto) {
+  if (detected) {
+    return { selectedId: detected, lastAuto: detected };
+  }
+  if (lastAuto !== null && selectedId === lastAuto) {
+    return { selectedId: 'all', lastAuto: null };
+  }
+  return { selectedId, lastAuto: null };
+}

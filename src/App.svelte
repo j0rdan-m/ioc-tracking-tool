@@ -12,6 +12,7 @@
     countToolsByCategory,
     countToolsByIocType,
     filterTools,
+    nextAutoIocFilter,
   } from './lib/utils/filter-tools.js';
 
   let { container } = $props();
@@ -34,29 +35,20 @@
   // IoC shape detected in the current query (null when it is not an observable).
   let detectedIocTypeId = $derived(detectIocType(query));
 
-  // Pre-apply the matching IoC-type pill whenever the detected type changes.
-  // When the query stops looking like an IoC, the pill is cleared only if it
-  // still holds the auto-applied value, so a manual pick survives. untrack()
-  // keeps the effect driven by the query alone: writing the pill state back
+  // While the query looks like an IoC, the IoC-type pill always follows the
+  // detected type (re-pasting an observable re-applies it, even after a manual
+  // pick). When the query stops being an IoC, the pill resets to 'all' only if
+  // it still holds the auto-applied value, so a manual pick survives. The
+  // transition lives in nextAutoIocFilter (pure + unit-tested); untrack() keeps
+  // this effect driven by the query alone, so writing the pill state back
   // cannot re-trigger the effect.
-  let lastAppliedDetection = null;
+  let lastAutoDetection = null;
   $effect(() => {
     const detected = detectedIocTypeId;
     untrack(() => {
-      if (detected) {
-        if (detected !== lastAppliedDetection) {
-          lastAppliedDetection = detected;
-          selectedIocTypeId = detected;
-        }
-        return;
-      }
-      if (lastAppliedDetection !== null) {
-        const wasAutoApplied = selectedIocTypeId === lastAppliedDetection;
-        lastAppliedDetection = null;
-        if (wasAutoApplied) {
-          selectedIocTypeId = 'all';
-        }
-      }
+      const next = nextAutoIocFilter(detected, selectedIocTypeId, lastAutoDetection);
+      lastAutoDetection = next.lastAuto;
+      selectedIocTypeId = next.selectedId;
     });
   });
 
@@ -114,7 +106,7 @@
         <p class="status status--muted" role="status">
           This query looks like <strong>{iocLabelById.get(detectedIocTypeId)}</strong>
           {#if selectedIocTypeId === detectedIocTypeId}
-            — the matching IoC-type filter was applied automatically (pick another pill to override).
+            — the matching IoC-type filter is applied automatically (pick another pill to override).
           {:else}
             — the IoC-type pill you picked stays in effect.
           {/if}

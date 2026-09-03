@@ -11,7 +11,7 @@ import { DI_TOKENS } from '../src/lib/di/tokens.js';
 import { HttpToolDataSource } from '../src/lib/services/http-tool-data-source.js';
 import { StaticToolDataSource } from '../src/lib/services/static-tool-data-source.js';
 import { ToolRepository } from '../src/lib/services/tool-repository.js';
-import { countToolsByCategory, countToolsByIocType, filterTools } from '../src/lib/utils/filter-tools.js';
+import { countToolsByCategory, countToolsByIocType, filterTools, nextAutoIocFilter } from '../src/lib/utils/filter-tools.js';
 import { detectIocType } from '../src/lib/utils/detect-ioc-type.js';
 
 const catalogPath = new URL('../src/data/tools.json', import.meta.url);
@@ -134,6 +134,26 @@ for (const [sample] of detectionSamples) {
   const detected = detectIocType(sample);
   if (detected !== null && !iocTypeIds.has(detected)) {
     throw new Error(`detectIocType: unknown IoC type "${detected}" for "${sample}".`);
+  }
+}
+
+// --- Auto-applied IoC filter transition ---
+const transitionCases = [
+  // [detected, selectedId, lastAuto, expectedSelectedId, expectedLastAuto]
+  ['ip', 'all', null, 'ip', 'ip'],
+  ['ip', 'domain', 'ip', 'ip', 'ip'], // re-pasting an IP re-applies it
+  [null, 'ip', 'ip', 'all', null], // query cleared: auto value resets
+  [null, 'domain', 'ip', 'domain', null], // manual pick survives
+  [null, 'all', null, 'all', null],
+];
+for (const [detected, selectedId, lastAuto, expectedSelected, expectedLastAuto] of transitionCases) {
+  const result = nextAutoIocFilter(detected, selectedId, lastAuto);
+  if (result.selectedId !== expectedSelected || result.lastAuto !== expectedLastAuto) {
+    throw new Error(
+      `nextAutoIocFilter(${detected}, ${selectedId}, ${lastAuto}) should be ` +
+        `{ selectedId: ${expectedSelected}, lastAuto: ${expectedLastAuto} }, got ` +
+        `${JSON.stringify(result)}.`,
+    );
   }
 }
 
