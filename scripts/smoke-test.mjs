@@ -72,7 +72,7 @@ if (container.has(DI_TOKENS.toolRepository)) {
 // --- Repository with injected data source ---
 const repository = new ToolRepository(new StaticToolDataSource(catalog));
 const loaded = await repository.getCatalog();
-if (loaded.tools.length !== 31) {
+if (loaded.tools.length !== 35) {
   throw new Error(`Catalog: expected 17 tools, got ${loaded.tools.length}.`);
 }
 
@@ -85,13 +85,13 @@ const reputationMatches = filterTools(loaded.tools, '', 'reputation').map((tool)
 if (reputationMatches.join(',') !== 'abuseipdb,scamalytics,urlvoid,sucuri-sitecheck,controld-link-checker,isitphishing') {
   throw new Error(`filterTools: category filter failed, got [${reputationMatches}].`);
 }
-if (countToolsByCategory(loaded.tools).get('all') !== 31) {
+if (countToolsByCategory(loaded.tools).get('all') !== 35) {
   throw new Error('countToolsByCategory: global count failed.');
 }
 const emailMatches = filterTools(loaded.tools, '', 'all', 'email').map((tool) => tool.id);
 if (
   emailMatches.join(',') !==
-  'mxtoolbox,cyberchef,alienvault-otx,intelligence-x,microsoft-message-header-analyzer,google-messageheader'
+  'mxtoolbox,cyberchef,alienvault-otx,intelligence-x,microsoft-message-header-analyzer,google-messageheader,breach-directory,haveibeenpwned'
 ) {
   throw new Error(`filterTools: IoC type filter failed, got [${emailMatches}].`);
 }
@@ -162,7 +162,7 @@ const fakeFetch = async () => ({ ok: true, json: async () => catalog });
 const httpRepository = new ToolRepository(
   new HttpToolDataSource('/tools.json', { fetch: fakeFetch }),
 );
-if ((await httpRepository.getCatalog()).tools.length !== 31) {
+if ((await httpRepository.getCatalog()).tools.length !== 35) {
   throw new Error('HttpToolDataSource: injected fetch failed.');
 }
 

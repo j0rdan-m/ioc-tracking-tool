@@ -1,5 +1,5 @@
 {
-  "version": "1.3.0",
+  "version": "1.4.0",
   "updatedAt": "2026-09-02",
   "categories": [
     { "id": "geolocation", "label": "IP Geolocation" },
@@ -19,7 +19,8 @@
     { "id": "domain", "label": "Domain & DNS" },
     { "id": "url", "label": "URL" },
     { "id": "file", "label": "File & hash" },
-    { "id": "email", "label": "Email" }
+    { "id": "email", "label": "Email" },
+    { "id": "username", "label": "Username" }
   ],
   "tools": [
     {
@@ -267,11 +268,11 @@
     },
     {
       "id": "intelligence-x",
-      "iocTypes": ["ip", "domain", "url", "file", "email"],
+      "iocTypes": ["ip", "domain", "url", "file", "email", "username"],
       "name": "Intelligence X",
       "url": "https://intelx.io/",
       "categoryId": "threat-intelligence",
-      "description": "Powerful search engine over data leaks, pastes, the dark web, historical WHOIS and DNS records, with pivots on emails, domains, IPs and phone numbers.",
+      "description": "Powerful search engine over data leaks, pastes, the dark web, historical WHOIS and DNS records, with pivots on emails, usernames, domains, IPs and phone numbers.",
       "tags": ["osint", "leaks", "dark-web", "whois", "dns", "search-engine"]
     },
     {
@@ -300,6 +301,42 @@
       "categoryId": "network-bgp",
       "description": "Far more complete than basic IP tools for network forensics: BGP routes, announced prefixes, ASN history and peering for any IP, prefix or autonomous system.",
       "tags": ["bgp", "asn", "prefixes", "routing", "network", "ip"]
+    },
+    {
+      "id": "web-check",
+      "iocTypes": ["url", "domain"],
+      "name": "Web Check",
+      "url": "https://web-check.xyz/",
+      "categoryId": "url-analysis",
+      "description": "Open-source all-in-one website analyzer: DNS records, SSL chain, HTTP headers and cookies, tech stack, hosting and server location, sitemap and more for any URL or hostname.",
+      "tags": ["website", "osint", "dns", "headers", "ssl", "tech-stack"]
+    },
+    {
+      "id": "breach-directory",
+      "iocTypes": ["email", "username"],
+      "name": "Breach Directory",
+      "url": "https://breachdirectory.org/",
+      "categoryId": "threat-intelligence",
+      "description": "Search public data breaches by email address, username, phone number or password hash and find out which leaks exposed the account.",
+      "tags": ["breach", "email", "username", "leaks", "credentials", "osint"]
+    },
+    {
+      "id": "haveibeenpwned",
+      "iocTypes": ["email", "domain"],
+      "name": "Have I Been Pwned",
+      "url": "https://haveibeenpwned.com/",
+      "categoryId": "threat-intelligence",
+      "description": "Troy Hunt's reference breach database: check an email address or phone number against billions of leaked records, monitor a whole domain, or verify a password against the Pwned Passwords corpus.",
+      "tags": ["breach", "email", "leaks", "credentials", "passwords", "osint"]
+    },
+    {
+      "id": "usersearch",
+      "iocTypes": ["username"],
+      "name": "UserSearch",
+      "url": "https://usersearch.com/",
+      "categoryId": "threat-intelligence",
+      "description": "Username search engine: look up a handle across hundreds of social networks, forums, chat apps and online communities to map an identity and pivot an investigation.",
+      "tags": ["username", "osint", "identity", "social-media", "pivot"]
     }
   ]
 }

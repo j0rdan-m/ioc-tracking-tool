@@ -6,7 +6,7 @@ pivot on **Indicators of Compromise (IOCs)** during cybersecurity forensic inves
 The catalog lives in a single JSON file — [`src/data/tools.json`](src/data/tools.json) — where each
 entry explains what the tool does, lists the IoC types it handles, and links to it. The Svelte
 frontend renders the catalog with free-text search, category filters and IoC-type filters
-(IP, domain & DNS, URL, file & hash, email). Pasting an observable (IP, hash, domain, email or
+(IP, domain & DNS, URL, file & hash, email, username). Pasting an observable (IP, hash, domain, email or
 URL) auto-detects its IoC type, pre-applies the matching filter and searches by type instead of
 by keyword (`src/lib/utils/detect-ioc-type.js`).
 
@@ -54,6 +54,10 @@ npm run preview   # serve the production build locally
 | [Microsoft Message Header Analyzer](https://mha.azurewebsites.net/) | Email header analysis | Make raw email headers readable (SPF/DKIM/DMARC) |
 | [Google Admin Toolbox Messageheader](https://toolbox.googleapps.com/apps/messageheader/) | Email header analysis | Alternative email path & authentication visualizer |
 | [Hurricane Electric BGP Toolkit](https://bgp.he.net/) | Network & BGP | BGP routes, announced prefixes, ASN history |
+| [Web Check](https://web-check.xyz/) | URL analysis | All-in-one website analyzer: DNS, SSL, headers, tech stack |
+| [Breach Directory](https://breachdirectory.org/) | Threat intelligence | Breach search by email, username, phone or password |
+| [Have I Been Pwned](https://haveibeenpwned.com/) | Threat intelligence | Reference breach database (emails, domains, passwords) |
+| [UserSearch](https://usersearch.com/) | Threat intelligence | Username lookup across social networks & forums |
 
 ## Project structure
 
@@ -97,8 +101,8 @@ If the category does not exist yet, add it to `categories`; it automatically get
 pill and accent color (derived from the category id, see `src/lib/utils/color.js`).
 
 `iocTypes` powers the second filter row: list every IoC type the tool can handle among `ip`,
-`domain`, `url`, `file` and `email` (defined at the top of the catalog). If a type is missing,
-add it to the `iocTypes` definitions — it automatically gets its own filter pill.
+`domain`, `url`, `file`, `email` and `username` (defined at the top of the catalog). If a type is
+missing, add it to the `iocTypes` definitions — it automatically gets its own filter pill.
 
 ## Deployment (GitHub Pages)
 
