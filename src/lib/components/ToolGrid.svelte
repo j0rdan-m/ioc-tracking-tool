@@ -5,9 +5,10 @@
    * Responsive card grid for the filtered tools, with an empty state.
    *
    * @type {{ tools: import('../types.js').Tool[], categoryLabelById: Map<string, string>,
-   *          iocLabelById: Map<string, string> }}
+   *          iocLabelById: Map<string, string>, favoriteIds: string[],
+   *          onToggleFavorite: (toolId: string) => void }}
    */
-  let { tools, categoryLabelById, iocLabelById } = $props();
+  let { tools, categoryLabelById, iocLabelById, favoriteIds, onToggleFavorite } = $props();
 </script>
 
 {#if tools.length === 0}
@@ -20,6 +21,8 @@
           {tool}
           categoryLabel={categoryLabelById.get(tool.categoryId) ?? 'Uncategorized'}
           iocLabelById={iocLabelById}
+          isFavorite={favoriteIds.includes(tool.id)}
+          {onToggleFavorite}
         />
       </li>
     {/each}

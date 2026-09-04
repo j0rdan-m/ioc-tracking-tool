@@ -8,4 +8,5 @@ export const DI_TOKENS = Object.freeze({
   toolCatalogSource: Symbol('di.toolCatalogSource'),
   toolRepository: Symbol('di.toolRepository'),
   clipboard: Symbol('di.clipboard'),
+  favorites: Symbol('di.favorites'),
 });

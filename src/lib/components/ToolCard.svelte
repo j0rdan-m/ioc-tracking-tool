@@ -4,13 +4,16 @@
   import { hueFromString } from '../utils/color.js';
 
   /**
-   * One tool card: category, IoC types, description, tags, external link and copy action.
-   * The clipboard service is injected — no browser API is used directly here.
+   * One tool card: category, IoC types, description, tags, external link, copy
+   * and favorite actions. The clipboard service is injected — no browser API is
+   * used directly here. Favorites state lives in App; the card only reports
+   * clicks through onToggleFavorite.
    *
    * @type {{ tool: import('../types.js').Tool, categoryLabel: string,
-   *          iocLabelById: Map<string, string> }}
+   *          iocLabelById: Map<string, string>, isFavorite: boolean,
+   *          onToggleFavorite: (toolId: string) => void }}
    */
-  let { tool, categoryLabel, iocLabelById } = $props();
+  let { tool, categoryLabel, iocLabelById, isFavorite, onToggleFavorite } = $props();
 
   /** @type {import('../services/clipboard.js').ClipboardService} */
   const clipboard = inject(DI_TOKENS.clipboard);
@@ -36,7 +39,19 @@
 </script>
 
 <article class="card" style="--category-hue: {categoryHue}">
-  <span class="card__category">{categoryLabel}</span>
+  <div class="card__head">
+    <span class="card__category">{categoryLabel}</span>
+    <button
+      type="button"
+      class="card__favorite"
+      class:card__favorite--active={isFavorite}
+      aria-pressed={isFavorite}
+      aria-label={isFavorite ? `Remove ${tool.name} from favorites` : `Add ${tool.name} to favorites`}
+      onclick={() => onToggleFavorite(tool.id)}
+    >
+      {isFavorite ? '♥' : '♡'}
+    </button>
+  </div>
   <ul class="card__ioc" aria-label="IoC types handled by this tool">
     {#each iocLabels as iocLabel (iocLabel)}
       <li class="card__ioc-type">{iocLabel}</li>
@@ -105,6 +120,45 @@
     border-radius: 999px;
     background: hsl(var(--category-hue) 80% 60%);
     box-shadow: 0 0 8px hsl(var(--category-hue) 80% 60% / 0.8);
+  }
+
+  .card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .card__favorite {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    font-size: 1rem;
+    line-height: 1;
+    color: var(--color-text-muted);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition:
+      color 0.15s ease,
+      border-color 0.15s ease,
+      background-color 0.15s ease,
+      transform 0.15s ease;
+  }
+
+  .card__favorite:hover {
+    color: var(--color-text);
+    border-color: var(--color-accent);
+    transform: scale(1.08);
+  }
+
+  .card__favorite--active {
+    color: var(--color-accent);
+    background: rgb(56 189 248 / 0.14);
+    border-color: var(--color-accent);
   }
 
   .card__ioc {

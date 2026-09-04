@@ -2,6 +2,7 @@ import catalog from '../data/tools.json';
 import { createContainer } from './di/container.js';
 import { DI_TOKENS } from './di/tokens.js';
 import { ClipboardService } from './services/clipboard.js';
+import { FavoritesService } from './services/favorites.js';
 import { StaticToolDataSource } from './services/static-tool-data-source.js';
 import { ToolRepository } from './services/tool-repository.js';
 
@@ -30,6 +31,8 @@ export function createAppContainer() {
   );
 
   container.register(DI_TOKENS.clipboard, () => new ClipboardService());
+
+  container.register(DI_TOKENS.favorites, () => new FavoritesService());
 
   return container;
 }

@@ -26,10 +26,13 @@
   // svelte-ignore state_referenced_locally
   provideContainer(container);
   const toolRepository = inject(DI_TOKENS.toolRepository);
+  const favorites = inject(DI_TOKENS.favorites);
 
   let query = $state('');
   let selectedCategoryId = $state('all');
   let selectedIocTypeId = $state('all');
+  let favoriteIds = $state(favorites.getFavorites());
+  let favoritesOnly = $state(false);
   let catalogPromise = $state(toolRepository.getCatalog());
 
   // IoC shape detected in the current query (null when it is not an observable).
@@ -52,6 +55,15 @@
     });
   });
 
+  /**
+   * Toggles a tool favorite and persists the new list via the service.
+   *
+   * @param {string} toolId
+   */
+  function toggleFavorite(toolId) {
+    favoriteIds = favorites.toggle(toolId);
+  }
+
   function retryLoadingCatalog() {
     catalogPromise = toolRepository.getCatalog();
   }
@@ -72,20 +84,24 @@
     {#await catalogPromise}
       <p class="status" role="status">Loading the tool catalog…</p>
     {:then catalog}
+      <!-- Favorites facet: the pool narrows before the other facets apply. -->
+      {@const favoritePool = favoritesOnly
+        ? catalog.tools.filter((tool) => favoriteIds.includes(tool.id))
+        : catalog.tools}
       <!-- When the query is a recognizable IoC it is not a keyword: skip the
            text match and let the auto-applied IoC-type filter drive the list. -->
       {@const queryForText = detectedIocTypeId ? '' : query}
-      {@const filteredTools = filterTools(catalog.tools, queryForText, selectedCategoryId, selectedIocTypeId)}
+      {@const filteredTools = filterTools(favoritePool, queryForText, selectedCategoryId, selectedIocTypeId)}
       {@const categoryLabelById = new Map(
         catalog.categories.map((category) => [category.id, category.label]),
       )}
       {@const iocLabelById = new Map(catalog.iocTypes.map((iocType) => [iocType.id, iocType.label]))}
       <!-- Faceted counts: each filter row reflects the query and the other facet. -->
       {@const countByCategory = countToolsByCategory(
-        filterTools(catalog.tools, queryForText, 'all', selectedIocTypeId),
+        filterTools(favoritePool, queryForText, 'all', selectedIocTypeId),
       )}
       {@const countByIocType = countToolsByIocType(
-        filterTools(catalog.tools, queryForText, selectedCategoryId, 'all'),
+        filterTools(favoritePool, queryForText, selectedCategoryId, 'all'),
       )}
 
       <section class="toolbar">
@@ -100,6 +116,16 @@
           bind:selectedId={selectedIocTypeId}
           {countByIocType}
         />
+        <button
+          type="button"
+          class="favorites-toggle"
+          class:favorites-toggle--active={favoritesOnly}
+          aria-pressed={favoritesOnly}
+          onclick={() => (favoritesOnly = !favoritesOnly)}
+        >
+          ★ Favorites
+          <span class="favorites-toggle__count">{favoriteIds.length}</span>
+        </button>
       </section>
 
       {#if detectedIocTypeId}
@@ -113,7 +139,13 @@
         </p>
       {/if}
 
-      <ToolGrid tools={filteredTools} {categoryLabelById} {iocLabelById} />
+      <ToolGrid
+        tools={filteredTools}
+        {categoryLabelById}
+        {iocLabelById}
+        {favoriteIds}
+        {onToggleFavorite}
+      />
 
       <p class="status status--muted" role="status">
         Showing {filteredTools.length} of {catalog.tools.length} tools.
@@ -200,6 +232,50 @@
     .toolbar {
       position: static;
     }
+  }
+
+  .favorites-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.85rem;
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 500;
+    color: var(--color-text-muted);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition:
+      color 0.15s ease,
+      border-color 0.15s ease,
+      background-color 0.15s ease;
+  }
+
+  .favorites-toggle:hover {
+    color: var(--color-text);
+    border-color: var(--color-accent);
+  }
+
+  .favorites-toggle--active {
+    color: var(--color-accent);
+    background: rgb(56 189 248 / 0.12);
+    border-color: var(--color-accent);
+  }
+
+  .favorites-toggle__count {
+    padding: 0.05rem 0.45rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    background: rgb(148 163 184 / 0.12);
+    border-radius: 999px;
+  }
+
+  .favorites-toggle--active .favorites-toggle__count {
+    color: var(--color-accent);
+    background: rgb(56 189 248 / 0.16);
   }
 
   .status {

@@ -8,7 +8,8 @@ entry explains what the tool does, lists the IoC types it handles, and links to 
 frontend renders the catalog with free-text search, category filters and IoC-type filters
 (IP, domain & DNS, URL, file & hash, email, username). Pasting an observable (IP, hash, domain, email or
 URL) auto-detects its IoC type, pre-applies the matching filter and searches by type instead of
-by keyword (`src/lib/utils/detect-ioc-type.js`).
+by keyword (`src/lib/utils/detect-ioc-type.js`). Tools can be starred as favorites — the selection
+is stored in the browser (localStorage) and a dedicated pill shows only them.
 
 ## Getting started
 
@@ -75,6 +76,7 @@ src/
       http-tool-data-source.js    # fetches the catalog over HTTP (fetch injected)
       tool-repository.js          # read-side repository over the catalog
       clipboard.js                # copy-to-clipboard with legacy fallback
+      favorites.js                # starred tools persisted in localStorage
     utils/                    # pure helpers (filtering, counting, colors)
     components/               # Svelte UI components
   App.svelte                  # page layout & state
@@ -132,6 +134,8 @@ External dependencies are never hard-imported deep inside components:
   tests.
 - The **browser clipboard** is injected into `ClipboardService` (constructor defaults), with a
   legacy fallback for non-secure contexts.
+- The **favorites storage** is injected into `FavoritesService` (browser `localStorage` by default,
+  in-memory fallback), so persistence can be stubbed in tests.
 - Components receive dependencies through Svelte context (`provideContainer` / `inject`) instead of
   importing singletons, which keeps them decoupled and easy to test.
 

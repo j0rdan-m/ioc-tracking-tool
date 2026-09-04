@@ -1,6 +1,6 @@
 /**
  * Smoke test for the catalog and the framework-agnostic core (DI container,
- * repository, data sources, filtering). Run with `npm run smoke`.
+ * repository, data sources, filtering, favorites). Run with `npm run smoke`.
  *
  * The composition root itself is exercised by `npm run build`, since it imports
  * the bundled JSON through Vite.
@@ -13,6 +13,7 @@ import { StaticToolDataSource } from '../src/lib/services/static-tool-data-sourc
 import { ToolRepository } from '../src/lib/services/tool-repository.js';
 import { countToolsByCategory, countToolsByIocType, filterTools, nextAutoIocFilter } from '../src/lib/utils/filter-tools.js';
 import { detectIocType } from '../src/lib/utils/detect-ioc-type.js';
+import { FavoritesService } from '../src/lib/services/favorites.js';
 
 const catalogPath = new URL('../src/data/tools.json', import.meta.url);
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
@@ -155,6 +156,42 @@ for (const [detected, selectedId, lastAuto, expectedSelected, expectedLastAuto] 
         `${JSON.stringify(result)}.`,
     );
   }
+}
+
+// --- Favorites service ---
+const memoryStore = new Map();
+const favoritesStorage = {
+  getItem: (key) => (memoryStore.has(key) ? memoryStore.get(key) : null),
+  setItem: (key, value) => memoryStore.set(key, String(value)),
+};
+const favoritesService = new FavoritesService(favoritesStorage);
+if (favoritesService.getFavorites().length !== 0) {
+  throw new Error('FavoritesService: storage should start empty.');
+}
+favoritesService.toggle('hostip');
+favoritesService.toggle('crtsh');
+if (favoritesService.getFavorites().join(',') !== 'hostip,crtsh') {
+  throw new Error(`FavoritesService: unexpected list, got [${favoritesService.getFavorites()}].`);
+}
+if (!favoritesService.isFavorite('crtsh') || favoritesService.isFavorite('virustotal')) {
+  throw new Error('FavoritesService: isFavorite failed.');
+}
+favoritesService.toggle('hostip');
+if (favoritesService.getFavorites().join(',') !== 'crtsh') {
+  throw new Error('FavoritesService: toggle removal failed.');
+}
+const sameStorageFavorites = new FavoritesService(favoritesStorage);
+if (!sameStorageFavorites.isFavorite('crtsh')) {
+  throw new Error('FavoritesService: favorites must persist through the storage.');
+}
+memoryStore.set('ioc-toolkit:favorites', 'not-json');
+if (favoritesService.getFavorites().length !== 0) {
+  throw new Error('FavoritesService: corrupted storage should yield an empty list.');
+}
+const isolatedFavorites = new FavoritesService();
+isolatedFavorites.toggle('virustotal');
+if (!isolatedFavorites.isFavorite('virustotal')) {
+  throw new Error('FavoritesService: in-memory fallback failed.');
 }
 
 // --- fetch injected into HttpToolDataSource ---
