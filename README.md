@@ -16,6 +16,8 @@ is stored in the browser (localStorage) and a dedicated pill shows only them.
 ```bash
 npm install
 npm run dev       # start the dev server (http://localhost:5173)
+npm run check     # static analysis (svelte-check + JSDoc types)
+npm run smoke     # catalog + core smoke test
 npm run build     # production build into dist/
 npm run preview   # serve the production build locally
 ```

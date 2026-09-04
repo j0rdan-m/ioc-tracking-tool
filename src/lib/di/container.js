@@ -9,7 +9,7 @@ const UNINITIALIZED = Symbol('di.uninitialized');
  * implementations — they only resolve tokens.
  *
  * @typedef {{ register: (token: symbol, factory: (container: Container) => unknown) => void,
- *            resolve: (token: symbol) => unknown,
+ *            resolve: (token: symbol) => any,
  *            has: (token: symbol) => boolean }} Container
  */
 
@@ -34,7 +34,8 @@ export function createContainer() {
    * Resolves (and memoizes) the dependency registered for the token.
    *
    * @param {symbol} token
-   * @returns {unknown}
+   * @returns {any} The resolved instance — any because symbol tokens carry no
+   *   compile-time type information; callers annotate the result where useful.
    */
   function resolve(token) {
     const registration = registrations.get(token);
@@ -50,7 +51,7 @@ export function createContainer() {
   const container = Object.freeze({
     register,
     resolve,
-    has: (token) => registrations.has(token),
+    has: (/** @type {symbol} */ token) => registrations.has(token),
   });
 
   return container;

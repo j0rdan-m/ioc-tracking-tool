@@ -16,7 +16,8 @@ export function provideContainer(container) {
  * Must be called during component initialisation (not in event handlers).
  *
  * @param {symbol} token
- * @returns {unknown}
+ * @returns {any} The resolved dependency — any because symbol tokens carry no
+ *   compile-time type information; callers annotate the result where useful.
  */
 export function inject(token) {
   const container = getContext(DI_CONTAINER);

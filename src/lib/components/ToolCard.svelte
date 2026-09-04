@@ -23,6 +23,7 @@
   /** @type {'idle' | 'copied' | 'failed'} */
   let copyState = $state('idle');
 
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
   let resetTimer;
 
   async function copyLink() {

@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Static check (svelte-check)
+        run: npm run check
+
       - name: Smoke test
         run: npm run smoke
 

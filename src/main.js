@@ -7,8 +7,13 @@ import { createAppContainer } from './lib/bootstrap.js';
 // root component, which publishes it to the tree via Svelte context.
 const container = createAppContainer();
 
+const target = document.getElementById('app');
+if (!target) {
+  throw new Error('main: no #app element to mount into.');
+}
+
 const app = mount(App, {
-  target: document.getElementById('app'),
+  target,
   props: { container },
 });
 

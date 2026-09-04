@@ -16,6 +16,7 @@
   } from './lib/utils/filter-tools.js';
 
   let { container } = $props();
+  // svelte-ignore state_referenced_locally
   if (!container) {
     throw new Error('App: missing "container" prop (the DI container built in main.js).');
   }
@@ -45,6 +46,7 @@
   // transition lives in nextAutoIocFilter (pure + unit-tested); untrack() keeps
   // this effect driven by the query alone, so writing the pill state back
   // cannot re-trigger the effect.
+  /** @type {string | null} */
   let lastAutoDetection = null;
   $effect(() => {
     const detected = detectedIocTypeId;
@@ -56,11 +58,12 @@
   });
 
   /**
-   * Toggles a tool favorite and persists the new list via the service.
+   * Toggles a tool favorite and persists the new list via the service. Named
+   * after the callback prop the template hands down to ToolGrid/ToolCard.
    *
    * @param {string} toolId
    */
-  function toggleFavorite(toolId) {
+  function onToggleFavorite(toolId) {
     favoriteIds = favorites.toggle(toolId);
   }
 
