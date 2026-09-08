@@ -171,7 +171,7 @@
         {(healthCheckedAt ?? 'never').slice(0, 16).replace('T', ' ')} UTC.
       </p>
 
-      <FastAnalyzeModal bind:open={fastAnalyzeOpen} {catalog} />
+      <FastAnalyzeModal bind:open={fastAnalyzeOpen} {catalog} prefill={query} />
     {:catch error}
       <p class="status status--error" role="alert">
         Could not load the tool catalog: {error.message}

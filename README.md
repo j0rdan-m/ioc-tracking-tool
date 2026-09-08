@@ -27,7 +27,8 @@ Every check reports its own status (ok / empty / error), so one failing provider
 others. Tools that cannot be called from the browser — VirusTotal, abuse.ch (both now require an
 API key) or urlscan.io (no CORS headers) — are offered as **"go further" links** that open the tool
 with the IoC already entered (e.g. `abuseipdb.com/check/<ip>`, `crt.sh/?q=<domain>`). File hashes
-and usernames have no keyless API at all, so they go straight to those deep links.
+and usernames have no keyless API at all, so they go straight to those deep links. A query already
+typed in the main search box is automatically pre-filled into the modal when it opens.
 
 Implementation: `src/lib/services/fast-analyze.js` (providers + response normalization),
 `src/lib/utils/deep-links.js` (pure deep-link builders) and

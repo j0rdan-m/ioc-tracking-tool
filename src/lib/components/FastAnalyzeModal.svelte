@@ -1,4 +1,5 @@
 <script>
+  import { untrack } from 'svelte';
   import { inject } from '../di/provide.js';
   import { DI_TOKENS } from '../di/tokens.js';
   import { detectIocType } from '../utils/detect-ioc-type.js';
@@ -10,11 +11,12 @@
    * sources (RDAP) are queried straight from the browser. Each check reports
    * its own status so one failing provider never blocks the others; a
    * "go further" list then offers catalog tools opened with the IoC already
-   * entered.
+   * entered. When the main search box holds a query, `prefill` seeds the input
+   * each time the modal opens.
    *
-   * @type {{ open?: boolean, catalog: import('../types.js').ToolCatalog }}
+   * @type {{ open?: boolean, catalog: import('../types.js').ToolCatalog, prefill?: string }}
    */
-  let { open = $bindable(false), catalog } = $props();
+  let { open = $bindable(false), catalog, prefill = '' } = $props();
 
   /** @type {import('../services/fast-analyze.js').FastAnalyzerService} */
   const analyzer = inject(DI_TOKENS.fastAnalyzer);
@@ -56,6 +58,15 @@
       return;
     }
     resetResults();
+    // Seed the input from the main search box when it holds something. Read
+    // inside untrack() so this effect stays driven by `open` alone — otherwise
+    // typing in the main box while the modal is open would reset the results.
+    untrack(() => {
+      const seed = prefill.trim();
+      if (seed !== '') {
+        value = seed;
+      }
+    });
     inputEl?.focus();
     document.body.style.overflow = 'hidden';
     return () => {
