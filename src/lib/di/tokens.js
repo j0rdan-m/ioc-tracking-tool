@@ -10,4 +10,5 @@ export const DI_TOKENS = Object.freeze({
   clipboard: Symbol('di.clipboard'),
   favorites: Symbol('di.favorites'),
   healthCatalog: Symbol('di.healthCatalog'),
+  fastAnalyzer: Symbol('di.fastAnalyzer'),
 });

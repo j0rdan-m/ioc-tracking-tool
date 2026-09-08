@@ -11,6 +11,29 @@ URL) auto-detects its IoC type, pre-applies the matching filter and searches by 
 by keyword (`src/lib/utils/detect-ioc-type.js`). Tools can be starred as favorites — the selection
 is stored in the browser (localStorage) and a dedicated pill shows only them.
 
+## Fast analyze
+
+The **⚡ Fast analyze** button opens a modal for a quick first read on a single indicator: paste an
+IoC (IP, domain, URL, hash or email), press **Start**, and the app queries free, unauthenticated
+public APIs straight from the browser — no account, no API key, nothing sent to a backend:
+
+| Check | Source | IoC types |
+| --- | --- | --- |
+| IP intelligence (geo, ASN, hosting, risk flags) | [ipapi.is](https://ipapi.is/) (catalog tool; [ipwho.is](https://ipwho.is/) fallback) | IP |
+| Registration & registrar (RDAP) | [rdap.org](https://rdap.org/) | Domain, IP, URL host, email domain |
+| TLS certificates (CT logs) | [crt.sh](https://crt.sh/) (catalog tool) | Domain, URL host |
+
+Every check reports its own status (ok / empty / error), so one failing provider never blocks the
+others. Tools that cannot be called from the browser — VirusTotal, abuse.ch (both now require an
+API key) or urlscan.io (no CORS headers) — are offered as **"go further" links** that open the tool
+with the IoC already entered (e.g. `abuseipdb.com/check/<ip>`, `crt.sh/?q=<domain>`). File hashes
+and usernames have no keyless API at all, so they go straight to those deep links.
+
+Implementation: `src/lib/services/fast-analyze.js` (providers + response normalization),
+`src/lib/utils/deep-links.js` (pure deep-link builders) and
+`src/lib/components/FastAnalyzeModal.svelte` (UI), wired through `DI_TOKENS.fastAnalyzer` in the
+DI container.
+
 ## Getting started
 
 ```bash
@@ -134,6 +157,8 @@ External dependencies are never hard-imported deep inside components:
 
 - **`fetch`** is injected into `HttpToolDataSource` (constructor option), so it can be stubbed in
   tests.
+- The **fast-analyze providers** use the `fetch` injected into `FastAnalyzerService` (constructor
+  option), so the live lookups can be stubbed in tests.
 - The **browser clipboard** is injected into `ClipboardService` (constructor defaults), with a
   legacy fallback for non-secure contexts.
 - The **favorites storage** is injected into `FavoritesService` (browser `localStorage` by default,

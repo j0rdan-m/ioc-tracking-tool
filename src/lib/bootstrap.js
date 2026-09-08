@@ -4,6 +4,7 @@ import { createContainer } from './di/container.js';
 import { DI_TOKENS } from './di/tokens.js';
 import { ClipboardService } from './services/clipboard.js';
 import { FavoritesService } from './services/favorites.js';
+import { FastAnalyzerService } from './services/fast-analyze.js';
 import { StaticToolDataSource } from './services/static-tool-data-source.js';
 import { ToolRepository } from './services/tool-repository.js';
 
@@ -36,6 +37,10 @@ export function createAppContainer() {
   container.register(DI_TOKENS.favorites, () => new FavoritesService());
 
   container.register(DI_TOKENS.healthCatalog, () => healthCatalog);
+
+  // Fast-analyze lookups run directly from the browser against free keyless
+  // APIs; the global fetch is used by default and stays injectable for tests.
+  container.register(DI_TOKENS.fastAnalyzer, () => new FastAnalyzerService());
 
   return container;
 }

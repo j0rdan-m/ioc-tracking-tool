@@ -1,5 +1,6 @@
 <script>
   import CategoryFilter from './lib/components/CategoryFilter.svelte';
+  import FastAnalyzeModal from './lib/components/FastAnalyzeModal.svelte';
   import IocTypeFilter from './lib/components/IocTypeFilter.svelte';
   import SearchBar from './lib/components/SearchBar.svelte';
   import ToolGrid from './lib/components/ToolGrid.svelte';
@@ -35,6 +36,7 @@
   let selectedIocTypeId = $state('all');
   let favoriteIds = $state(favorites.getFavorites());
   let favoritesOnly = $state(false);
+  let fastAnalyzeOpen = $state(false);
   let catalogPromise = $state(toolRepository.getCatalog());
 
   // IoC shape detected in the current query (null when it is not an observable).
@@ -113,6 +115,14 @@
 
       <section class="toolbar">
         <SearchBar bind:value={query} />
+        <button
+          type="button"
+          class="fast-analyze"
+          onclick={() => (fastAnalyzeOpen = true)}
+          title="Query free no-account APIs for one IoC"
+        >
+          ⚡ Fast analyze
+        </button>
         <CategoryFilter
           categories={catalog.categories}
           bind:selectedId={selectedCategoryId}
@@ -160,6 +170,8 @@
         Showing {filteredTools.length} of {catalog.tools.length} tools · health checks from
         {(healthCheckedAt ?? 'never').slice(0, 16).replace('T', ' ')} UTC.
       </p>
+
+      <FastAnalyzeModal bind:open={fastAnalyzeOpen} {catalog} />
     {:catch error}
       <p class="status status--error" role="alert">
         Could not load the tool catalog: {error.message}
@@ -261,6 +273,24 @@
       color 0.15s ease,
       border-color 0.15s ease,
       background-color 0.15s ease;
+  }
+
+  /* Primary action of the toolbar: filled accent pill so it stands out. */
+  .fast-analyze {
+    padding: 0.4rem 0.95rem;
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: #08131f;
+    background: var(--color-accent);
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+  }
+
+  .fast-analyze:hover {
+    background: var(--color-accent-strong);
   }
 
   .favorites-toggle:hover {
