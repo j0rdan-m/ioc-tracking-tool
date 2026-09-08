@@ -3,6 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: '0 */6 * * *'
   workflow_dispatch:
 
 permissions:
@@ -35,6 +37,9 @@ jobs:
 
       - name: Smoke test
         run: npm run smoke
+
+      - name: Health check tools
+        run: npm run health
 
       - name: Build
         run: npm run build

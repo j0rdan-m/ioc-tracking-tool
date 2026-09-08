@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "check": "svelte-check --tsconfig ./jsconfig.json",
+    "health": "node scripts/health-check.mjs",
     "preview": "vite preview",
     "smoke": "node scripts/smoke-test.mjs"
   },

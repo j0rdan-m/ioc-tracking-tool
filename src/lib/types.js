@@ -33,5 +33,19 @@
  * @property {Tool[]} tools
  */
 
+/**
+ * @typedef {Object} HealthResult
+ * @property {boolean} ok        True when the site responded with a status below 500.
+ * @property {number | null} status HTTP status code (null on network error or timeout).
+ * @property {number | null} ms    Response time in milliseconds (null on failure).
+ */
+
+/**
+ * @typedef {Object} HealthCatalog
+ * @property {string} version   Health data schema version.
+ * @property {string} checkedAt ISO date of the last health-check run.
+ * @property {Record<string, HealthResult>} results Health per tool id.
+ */
+
 export {};
 

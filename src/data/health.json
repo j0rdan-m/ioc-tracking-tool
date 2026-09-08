@@ -1,0 +1,181 @@
+{
+  "version": "1.0.0",
+  "checkedAt": "2026-09-08T07:29:39.192Z",
+  "results": {
+    "hostip": {
+      "ok": true,
+      "status": 200,
+      "ms": 542
+    },
+    "abuseipdb": {
+      "ok": true,
+      "status": 403,
+      "ms": 292
+    },
+    "scamalytics": {
+      "ok": true,
+      "status": 200,
+      "ms": 443
+    },
+    "cyberbro": {
+      "ok": true,
+      "status": 403,
+      "ms": 452
+    },
+    "suip-biz": {
+      "ok": true,
+      "status": 200,
+      "ms": 827
+    },
+    "ipapi-is": {
+      "ok": true,
+      "status": 200,
+      "ms": 910
+    },
+    "ipinfo-io": {
+      "ok": true,
+      "status": 200,
+      "ms": 1003
+    },
+    "unshortlink": {
+      "ok": true,
+      "status": 200,
+      "ms": 1017
+    },
+    "urlvoid": {
+      "ok": true,
+      "status": 200,
+      "ms": 920
+    },
+    "sucuri-sitecheck": {
+      "ok": true,
+      "status": 200,
+      "ms": 1035
+    },
+    "controld-link-checker": {
+      "ok": true,
+      "status": 200,
+      "ms": 696
+    },
+    "isitphishing": {
+      "ok": true,
+      "status": 200,
+      "ms": 1886
+    },
+    "crtsh": {
+      "ok": true,
+      "status": 200,
+      "ms": 5208
+    },
+    "dnsdumpster": {
+      "ok": true,
+      "status": 200,
+      "ms": 582
+    },
+    "dnslytics": {
+      "ok": true,
+      "status": 200,
+      "ms": 591
+    },
+    "mxtoolbox": {
+      "ok": true,
+      "status": 200,
+      "ms": 857
+    },
+    "viewdns": {
+      "ok": true,
+      "status": 200,
+      "ms": 1120
+    },
+    "cyberchef": {
+      "ok": true,
+      "status": 200,
+      "ms": 715
+    },
+    "virustotal": {
+      "ok": true,
+      "status": 200,
+      "ms": 1269
+    },
+    "malwarebazaar": {
+      "ok": true,
+      "status": 200,
+      "ms": 1195
+    },
+    "hybrid-analysis": {
+      "ok": true,
+      "status": 200,
+      "ms": 1343
+    },
+    "anyrun": {
+      "ok": true,
+      "status": 200,
+      "ms": 775
+    },
+    "url-unshortener": {
+      "ok": true,
+      "status": 200,
+      "ms": 947
+    },
+    "urlscan-io": {
+      "ok": true,
+      "status": 200,
+      "ms": 749
+    },
+    "phishtank": {
+      "ok": true,
+      "status": 200,
+      "ms": 832
+    },
+    "alienvault-otx": {
+      "ok": true,
+      "status": 200,
+      "ms": 285
+    },
+    "threatfox": {
+      "ok": true,
+      "status": 200,
+      "ms": 477
+    },
+    "intelligence-x": {
+      "ok": true,
+      "status": 200,
+      "ms": 466
+    },
+    "microsoft-message-header-analyzer": {
+      "ok": true,
+      "status": 200,
+      "ms": 1058
+    },
+    "google-messageheader": {
+      "ok": true,
+      "status": 200,
+      "ms": 629
+    },
+    "he-bgp-toolkit": {
+      "ok": true,
+      "status": 200,
+      "ms": 910
+    },
+    "web-check": {
+      "ok": true,
+      "status": 429,
+      "ms": 530
+    },
+    "breach-directory": {
+      "ok": true,
+      "status": 403,
+      "ms": 481
+    },
+    "haveibeenpwned": {
+      "ok": true,
+      "status": 200,
+      "ms": 519
+    },
+    "usersearch": {
+      "ok": true,
+      "status": 200,
+      "ms": 535
+    }
+  }
+}

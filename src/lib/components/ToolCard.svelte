@@ -4,21 +4,36 @@
   import { hueFromString } from '../utils/color.js';
 
   /**
-   * One tool card: category, IoC types, description, tags, external link, copy
-   * and favorite actions. The clipboard service is injected — no browser API is
-   * used directly here. Favorites state lives in App; the card only reports
-   * clicks through onToggleFavorite.
+   * One tool card: category, IoC types, description, tags, external link, copy,
+   * favorite and health actions. The clipboard service is injected — no browser
+   * API is used directly here. Favorites state lives in App; the card only
+   * reports clicks through onToggleFavorite.
    *
    * @type {{ tool: import('../types.js').Tool, categoryLabel: string,
    *          iocLabelById: Map<string, string>, isFavorite: boolean,
-   *          onToggleFavorite: (toolId: string) => void }}
+   *          onToggleFavorite: (toolId: string) => void,
+   *          health: import('../types.js').HealthResult | null,
+   *          healthCheckedAt: string | null }}
    */
-  let { tool, categoryLabel, iocLabelById, isFavorite, onToggleFavorite } = $props();
+  let {
+    tool,
+    categoryLabel,
+    iocLabelById,
+    isFavorite,
+    onToggleFavorite,
+    health,
+    healthCheckedAt,
+  } = $props();
 
   /** @type {import('../services/clipboard.js').ClipboardService} */
   const clipboard = inject(DI_TOKENS.clipboard);
   const categoryHue = $derived(hueFromString(tool.categoryId));
   const iocLabels = $derived(tool.iocTypes.map((id) => iocLabelById.get(id) ?? id));
+  const healthTooltip = $derived(
+    health
+      ? `Last check: ${healthCheckedAt ? healthCheckedAt.slice(0, 16).replace('T', ' ') + ' UTC' : 'unknown'} — HTTP ${health.status ?? 'no response'}${health.ms != null ? ` · ${health.ms} ms` : ''}`
+      : 'No health data for this tool yet.',
+  );
 
   /** @type {'idle' | 'copied' | 'failed'} */
   let copyState = $state('idle');
@@ -66,10 +81,21 @@
     {/each}
   </ul>
   <footer class="card__actions">
-    <a class="card__open" href={tool.url} target="_blank" rel="noopener noreferrer">
-      Open tool
-      <span aria-hidden="true">↗</span>
-    </a>
+    <div class="card__actions-left">
+      <span
+        class="card__health"
+        class:card__health--up={health?.ok === true}
+        class:card__health--down={health?.ok === false}
+        title={healthTooltip}
+      >
+        <span class="card__health-dot" aria-hidden="true"></span>
+        {health ? (health.ok ? 'Up' : 'Down') : '—'}
+      </span>
+      <a class="card__open" href={tool.url} target="_blank" rel="noopener noreferrer">
+        Open tool
+        <span aria-hidden="true">↗</span>
+      </a>
+    </div>
     <button
       type="button"
       class="card__copy"
@@ -222,6 +248,39 @@
     margin-top: 0.25rem;
     padding-top: 0.85rem;
     border-top: 1px solid var(--color-border);
+  }
+
+  .card__actions-left {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  .card__health {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    cursor: help;
+  }
+
+  .card__health-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: rgb(148 163 184 / 0.7);
+  }
+
+  .card__health--up .card__health-dot {
+    background: var(--color-success);
+    box-shadow: 0 0 6px rgb(74 222 128 / 0.8);
+  }
+
+  .card__health--down .card__health-dot {
+    background: var(--color-danger);
+    box-shadow: 0 0 6px rgb(248 113 113 / 0.8);
   }
 
   .card__open {

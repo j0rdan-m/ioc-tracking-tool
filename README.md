@@ -141,6 +141,14 @@ External dependencies are never hard-imported deep inside components:
 - Components receive dependencies through Svelte context (`provideContainer` / `inject`) instead of
   importing singletons, which keeps them decoupled and easy to test.
 
+## Tool health checks
+
+Every deploy runs `npm run health`, which pings each tool URL from CI and writes a snapshot to
+`src/data/health.json`, bundled into the app (the workflow also runs every 6 hours to keep the
+indicators fresh). Each card shows a status dot — green = the site responded, red = network error,
+timeout or HTTP 5xx — with the HTTP status, latency and check date on hover. Any HTTP response
+counts as "up": a bot-protected site answering 403 is still online.
+
 ## Disclaimer
 
 All links point to third-party public services. Never submit confidential data, and only use them

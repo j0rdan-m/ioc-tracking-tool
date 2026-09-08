@@ -28,6 +28,7 @@
   provideContainer(container);
   const toolRepository = inject(DI_TOKENS.toolRepository);
   const favorites = inject(DI_TOKENS.favorites);
+  const healthCatalog = inject(DI_TOKENS.healthCatalog);
 
   let query = $state('');
   let selectedCategoryId = $state('all');
@@ -99,6 +100,9 @@
         catalog.categories.map((category) => [category.id, category.label]),
       )}
       {@const iocLabelById = new Map(catalog.iocTypes.map((iocType) => [iocType.id, iocType.label]))}
+      {@const healthById = healthCatalog?.results ?? {}}
+      {@const healthCheckedAt =
+        typeof healthCatalog?.checkedAt === 'string' ? healthCatalog.checkedAt : null}
       <!-- Faceted counts: each filter row reflects the query and the other facet. -->
       {@const countByCategory = countToolsByCategory(
         filterTools(favoritePool, queryForText, 'all', selectedIocTypeId),
@@ -148,10 +152,13 @@
         {iocLabelById}
         {favoriteIds}
         {onToggleFavorite}
+        healthById={healthById}
+        healthCheckedAt={healthCheckedAt}
       />
 
       <p class="status status--muted" role="status">
-        Showing {filteredTools.length} of {catalog.tools.length} tools.
+        Showing {filteredTools.length} of {catalog.tools.length} tools · health checks from
+        {(healthCheckedAt ?? 'never').slice(0, 16).replace('T', ' ')} UTC.
       </p>
     {:catch error}
       <p class="status status--error" role="alert">

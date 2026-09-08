@@ -1,4 +1,5 @@
 import catalog from '../data/tools.json';
+import healthCatalog from '../data/health.json';
 import { createContainer } from './di/container.js';
 import { DI_TOKENS } from './di/tokens.js';
 import { ClipboardService } from './services/clipboard.js';
@@ -33,6 +34,8 @@ export function createAppContainer() {
   container.register(DI_TOKENS.clipboard, () => new ClipboardService());
 
   container.register(DI_TOKENS.favorites, () => new FavoritesService());
+
+  container.register(DI_TOKENS.healthCatalog, () => healthCatalog);
 
   return container;
 }

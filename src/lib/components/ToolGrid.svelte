@@ -6,9 +6,19 @@
    *
    * @type {{ tools: import('../types.js').Tool[], categoryLabelById: Map<string, string>,
    *          iocLabelById: Map<string, string>, favoriteIds: string[],
-   *          onToggleFavorite: (toolId: string) => void }}
+   *          onToggleFavorite: (toolId: string) => void,
+   *          healthById: Record<string, import('../types.js').HealthResult>,
+   *          healthCheckedAt: string | null }}
    */
-  let { tools, categoryLabelById, iocLabelById, favoriteIds, onToggleFavorite } = $props();
+  let {
+    tools,
+    categoryLabelById,
+    iocLabelById,
+    favoriteIds,
+    onToggleFavorite,
+    healthById,
+    healthCheckedAt,
+  } = $props();
 </script>
 
 {#if tools.length === 0}
@@ -23,6 +33,8 @@
           iocLabelById={iocLabelById}
           isFavorite={favoriteIds.includes(tool.id)}
           {onToggleFavorite}
+          health={healthById[tool.id] ?? null}
+          {healthCheckedAt}
         />
       </li>
     {/each}
