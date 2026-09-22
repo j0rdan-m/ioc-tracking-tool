@@ -11,8 +11,9 @@
    * sources (RDAP) are queried straight from the browser. Each check reports
    * its own status so one failing provider never blocks the others; a
    * "go further" list then offers catalog tools opened with the IoC already
-   * entered. When the main search box holds a query, `prefill` seeds the input
-   * each time the modal opens.
+   * entered. When the main search box holds a query that is itself an IoC,
+   * `prefill` seeds the input each time the modal opens; keyword queries are
+   * ignored so they never overwrite the current input.
    *
    * @type {{ open?: boolean, catalog: import('../types.js').ToolCatalog, prefill?: string }}
    */
@@ -58,12 +59,14 @@
       return;
     }
     resetResults();
-    // Seed the input from the main search box when it holds something. Read
+    // Seed the input from the main search box when it holds a recognizable IoC.
+    // A keyword is deliberately ignored: it would only trip the "not an IoC"
+    // warning, and the previous indicator (if any) is left untouched. Read
     // inside untrack() so this effect stays driven by `open` alone — otherwise
     // typing in the main box while the modal is open would reset the results.
     untrack(() => {
       const seed = prefill.trim();
-      if (seed !== '') {
+      if (seed !== '' && detectIocType(seed)) {
         value = seed;
       }
     });
