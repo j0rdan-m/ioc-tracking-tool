@@ -16,6 +16,8 @@ import { detectIocType } from '../src/lib/utils/detect-ioc-type.js';
 import { FavoritesService } from '../src/lib/services/favorites.js';
 import { FastAnalyzerService } from '../src/lib/services/fast-analyze.js';
 import { getDeepLinks } from '../src/lib/utils/deep-links.js';
+import { extractIocs } from '../src/lib/utils/extract-iocs.js';
+import { defangIoc, normalizeIoc, refang, refangValue } from '../src/lib/utils/refang.js';
 
 const catalogPath = new URL('../src/data/tools.json', import.meta.url);
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
@@ -412,6 +414,120 @@ if (analyzer.getChecks('file').length !== 0 || analyzer.getChecks('username').le
   throw new Error('Fast analyze: file and username must fall back to deep links only.');
 }
 
+// --- IoC extraction from free text (pure modules, local only) ---
+// AC08 guard: extraction/refang/defang must never touch the network. Any
+// accidental fetch would make the calls below throw.
+const originalFetch = globalThis.fetch;
+globalThis.fetch = () => {
+  throw new Error('extraction must not perform network calls');
+};
+
+// Refang + source map: the raw defanged text is recoverable from the output.
+const refanged = refang('hxxps://evil[.]example[.]com/login');
+if (refanged.value !== 'https://evil.example.com/login') {
+  throw new Error(`Refang: wrong output, got "${refanged.value}".`);
+}
+if (refanged.srcStart.length !== refanged.value.length || refanged.srcEnd.length !== refanged.value.length) {
+  throw new Error('Refang: the source map needs one entry per output character.');
+}
+if ('hxxps://evil[.]example[.]com/login'.slice(refanged.srcStart[0], refanged.srcEnd[refanged.value.length - 1]) !== 'hxxps://evil[.]example[.]com/login') {
+  throw new Error('Refang: the source map must recover the exact original substring.');
+}
+const upperRefanged = refang('HXXPS://a[.]b');
+if (upperRefanged.value !== 'https://a.b') {
+  throw new Error(`Refang: uppercase variants must be handled, got "${upperRefanged.value}".`);
+}
+if (refangValue('https://example.com stays untouched') !== 'https://example.com stays untouched') {
+  throw new Error('Refang: plain text must not be altered.');
+}
+if (refangValue('mail me at user[@]host[.]com, thanks') !== 'mail me at user@host.com, thanks') {
+  throw new Error('Refang: [@]/[.] must be restored in context.');
+}
+
+// Normalization (refang + canonical casing) and defang.
+if (normalizeIoc('evil[.]example[.]com.', 'domain') !== 'evil.example.com') {
+  throw new Error(`Normalize: domain should be canonical, got "${normalizeIoc('evil[.]example[.]com.', 'domain')}".`);
+}
+if (normalizeIoc('hxxps://EVIL[.]Example[.]COM/Path', 'url') !== 'https://evil.example.com/Path') {
+  throw new Error('Normalize: URL host must lowercase while the path keeps its case.');
+}
+if (normalizeIoc('USER[@]Example[.]COM', 'email') !== 'user@example.com') {
+  throw new Error('Normalize: e-mail should be lowercased.');
+}
+if (defangIoc('https://evil.example.com/login', 'url') !== 'hxxps://evil[.]example[.]com/login') {
+  throw new Error('Defang: wrong neutralized URL.');
+}
+if (defangIoc('176.128.43.70', 'ip') !== '176[.]128[.]43[.]70') {
+  throw new Error('Defang: wrong neutralized IP.');
+}
+if (defangIoc('user@example.com', 'email') !== 'user[@]example[.]com') {
+  throw new Error('Defang: wrong neutralized e-mail.');
+}
+if (defangIoc('44d88612fea8a8f36de82e1278abb02f', 'file') !== '44d88612fea8a8f36de82e1278abb02f') {
+  throw new Error('Defang: hashes have nothing to neutralize.');
+}
+
+// AC02: one IoC per shape, extracted from the user-story sample, raw kept.
+const sampleText = [
+  'Connexion suspecte observée depuis 176.128.43.70.',
+  '',
+  'La machine a ensuite contacté :',
+  'hxxps://cdn-example[.]com/update.exe',
+  '',
+  'Un message a également été reçu depuis :',
+  'security[@]example[.]com',
+  '',
+  'SHA256 :',
+  '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8',
+].join('\n');
+const extracted = extractIocs(sampleText);
+if (extracted.warning !== null) {
+  throw new Error(`Extract: unexpected warning, got "${extracted.warning}".`);
+}
+if (extracted.iocs.length !== 4) {
+  throw new Error(`Extract: the sample text must yield 4 IoCs, got ${extracted.iocs.length}: ${JSON.stringify(extracted.iocs)}.`);
+}
+const [ipIoc, urlIoc, emailIoc, hashIoc] = extracted.iocs;
+if (ipIoc.typeId !== 'ip' || ipIoc.raw !== '176.128.43.70' || ipIoc.normalized !== '176.128.43.70') {
+  throw new Error(`Extract: wrong IP extraction, got ${JSON.stringify(ipIoc)}.`);
+}
+if (urlIoc.typeId !== 'url' || urlIoc.raw !== 'hxxps://cdn-example[.]com/update.exe' || urlIoc.normalized !== 'https://cdn-example.com/update.exe') {
+  throw new Error(`Extract: wrong URL extraction, got ${JSON.stringify(urlIoc)}.`);
+}
+if (emailIoc.typeId !== 'email' || emailIoc.raw !== 'security[@]example[.]com' || emailIoc.normalized !== 'security@example.com') {
+  throw new Error(`Extract: wrong e-mail extraction, got ${JSON.stringify(emailIoc)}.`);
+}
+if (hashIoc.typeId !== 'file' || hashIoc.hashKind !== 'SHA-256' || hashIoc.normalized !== '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8') {
+  throw new Error(`Extract: wrong hash extraction, got ${JSON.stringify(hashIoc)}.`);
+}
+// The host of a URL and the domain of an e-mail are not reported twice.
+if (extracted.iocs.some((ioc) => ioc.typeId === 'domain')) {
+  throw new Error(`Extract: hosts must stay masked behind their URL/e-mail, got ${JSON.stringify(extracted.iocs)}.`);
+}
+
+// AC07: deduplication on the normalized value, per type.
+const domainDedup = extractIocs('evil.example.com\nevil[.]example[.]com\nevil.example.com');
+if (domainDedup.iocs.length !== 1 || domainDedup.iocs[0].normalized !== 'evil.example.com') {
+  throw new Error(`Extract: defanged duplicates must collapse onto one IoC, got ${JSON.stringify(domainDedup.iocs)}.`);
+}
+const domainAndUrl = extractIocs('example.com\nexample[.]com\nhttps://example.com');
+const domainAndUrlKinds = domainAndUrl.iocs.map((ioc) => `${ioc.typeId}:${ioc.normalized}`);
+if (domainAndUrl.iocs.length !== 2 || !domainAndUrlKinds.includes('domain:example.com') || !domainAndUrlKinds.includes('url:https://example.com/')) {
+  throw new Error(`Extract: a URL is a distinct IoC from its host domain, got ${JSON.stringify(domainAndUrlKinds)}.`);
+}
+
+// AC01 (with sentence punctuation) and AC10 (nothing found).
+if (extractIocs('Connexion depuis 176.128.43.70.').iocs.map((ioc) => ioc.normalized).join(',') !== '176.128.43.70') {
+  throw new Error('Extract: sentence punctuation must not break IPv4 detection.');
+}
+if (extractIocs('999.999.1.1 looks like an IP but is not one').iocs.length !== 0) {
+  throw new Error('Extract: octets over 255 must be rejected.');
+}
+if (extractIocs('plain words only, nothing observable here').iocs.length !== 0) {
+  throw new Error('Extract: text without indicators must yield an empty list.');
+}
+
+globalThis.fetch = originalFetch;
 
 console.log(`SMOKE OK — ${loaded.tools.length} tools / ${loaded.categories.length} categories`);
 console.log(`ids: ${ids.join(', ')}`);

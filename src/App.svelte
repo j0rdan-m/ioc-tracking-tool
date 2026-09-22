@@ -1,6 +1,7 @@
 <script>
   import CategoryFilter from './lib/components/CategoryFilter.svelte';
   import FastAnalyzeModal from './lib/components/FastAnalyzeModal.svelte';
+  import IocExtractorModal from './lib/components/IocExtractorModal.svelte';
   import IocTypeFilter from './lib/components/IocTypeFilter.svelte';
   import SearchBar from './lib/components/SearchBar.svelte';
   import ToolGrid from './lib/components/ToolGrid.svelte';
@@ -37,6 +38,10 @@
   let favoriteIds = $state(favorites.getFavorites());
   let favoritesOnly = $state(false);
   let fastAnalyzeOpen = $state(false);
+  // Seed handed to the Fast analyze modal on open: the main search query from
+  // the toolbar button, or the normalized value of an extracted IoC.
+  let fastAnalyzePrefill = $state('');
+  let extractorOpen = $state(false);
   let catalogPromise = $state(toolRepository.getCatalog());
 
   // IoC shape detected in the current query (null when it is not an observable).
@@ -72,6 +77,28 @@
 
   function retryLoadingCatalog() {
     catalogPromise = toolRepository.getCatalog();
+  }
+
+  /**
+   * Opens the Fast analyze modal seeded with `seed` (empty seed = nothing to
+   * prefill). The modal itself only accepts seeds it recognizes as IoCs.
+   *
+   * @param {string} [seed]
+   */
+  function openFastAnalyze(seed = '') {
+    fastAnalyzePrefill = seed;
+    fastAnalyzeOpen = true;
+  }
+
+  /**
+   * Fast analyze hand-off coming from the Extract IoCs modal: closes the
+   * extractor and opens Fast analyze seeded with the normalized value.
+   *
+   * @param {string} normalized
+   */
+  function analyzeExtracted(normalized) {
+    extractorOpen = false;
+    openFastAnalyze(normalized);
   }
 </script>
 
@@ -118,10 +145,18 @@
         <button
           type="button"
           class="fast-analyze"
-          onclick={() => (fastAnalyzeOpen = true)}
+          onclick={() => openFastAnalyze(query)}
           title="Query free no-account APIs for one IoC"
         >
           ⚡ Fast analyze
+        </button>
+        <button
+          type="button"
+          class="extract-iocs"
+          onclick={() => (extractorOpen = true)}
+          title="Pull every IoC out of a pasted text"
+        >
+          🔍 Extract IoCs
         </button>
         <CategoryFilter
           categories={catalog.categories}
@@ -171,7 +206,8 @@
         {(healthCheckedAt ?? 'never').slice(0, 16).replace('T', ' ')} UTC.
       </p>
 
-      <FastAnalyzeModal bind:open={fastAnalyzeOpen} {catalog} prefill={query} />
+      <FastAnalyzeModal bind:open={fastAnalyzeOpen} {catalog} prefill={fastAnalyzePrefill} />
+      <IocExtractorModal bind:open={extractorOpen} {catalog} onAnalyze={analyzeExtracted} />
     {:catch error}
       <p class="status status--error" role="alert">
         Could not load the tool catalog: {error.message}
@@ -291,6 +327,27 @@
 
   .fast-analyze:hover {
     background: var(--color-accent-strong);
+  }
+
+  /* Secondary toolbar action: outlined pill, same shape as the favorites one. */
+  .extract-iocs {
+    padding: 0.4rem 0.95rem;
+    font: inherit;
+    font-size: 0.86rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition:
+      color 0.15s ease,
+      border-color 0.15s ease;
+  }
+
+  .extract-iocs:hover {
+    color: var(--color-text);
+    border-color: var(--color-accent);
   }
 
   .favorites-toggle:hover {

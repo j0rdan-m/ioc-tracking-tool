@@ -48,6 +48,20 @@
  */
 
 /**
+ * One indicator of compromise extracted from a pasted text by
+ * `extractIocs()` (see `src/lib/utils/extract-iocs.js`).
+ *
+ * @typedef {Object} ExtractedIoc
+ * @property {string} id    Stable deduplication key (`typeId:normalized`).
+ * @property {'ip' | 'domain' | 'url' | 'file' | 'email'} typeId
+ * @property {string} raw        Value as encountered in the text (may be defanged).
+ * @property {string} normalized Exploitable (refanged, canonical) value.
+ * @property {string} defanged   Neutralized form shown by default in the UI.
+ * @property {'MD5' | 'SHA-1' | 'SHA-256' | null} hashKind Display precision for `file` indicators.
+ * @property {number} index Position of the first occurrence in the analyzed text.
+ */
+
+/**
  * One key fact extracted from a fast-analyze provider response.
  *
  * @typedef {Object} FastCheckField

@@ -36,6 +36,30 @@ Implementation: `src/lib/services/fast-analyze.js` (providers + response normali
 `src/lib/components/FastAnalyzeModal.svelte` (UI), wired through `DI_TOKENS.fastAnalyzer` in the
 DI container.
 
+## Extract IoCs
+
+The **🔍 Extract IoCs** button opens a modal that pulls every indicator out of a pasted text (log,
+ticket, e-mail body). The analysis runs entirely in the browser — the text is never sent anywhere:
+
+- **Detection**: IPv4, domain, URL, e-mail and MD5/SHA-1/SHA-256 hashes, whether written plainly or
+  deliberately defanged (`hxxps://evil[.]example[.]com`, `user[@]example[.]com`);
+- **Normalization (refang)**: `[.]`, `(.)`, `[dot]`, `(dot)` → `.`, `[@]`, `[at]`, `(at)` → `@` and
+  `hxxp`/`hxxps` → `http`/`https`. The value exactly as found in the text is kept next to the
+  normalized one;
+- **Defang**: one click copies the neutralized form (`176[.]128[.]43[.]70`,
+  `hxxps://evil[.]example[.]com/login`, `user[@]example[.]com`; hashes have nothing to neutralize);
+- **Actions per indicator**: copy raw / normalized / defanged, hand the normalized value over to
+  **⚡ Fast analyze** (IP, domain, URL, e-mail — hashes and usernames have no keyless API), or reveal
+  "go further" deep links opened with the indicator already entered;
+- **Deduplication** on `type:normalized`, so `example.com` and `example[.]com` collapse into one
+  domain indicator while `https://example.com` stays a distinct URL;
+- **Safety**: detected values are rendered as inert text — nothing opens without an explicit click,
+  and the host of a URL or of an e-mail address is never reported as a second indicator.
+
+Implementation: `src/lib/utils/refang.js` (refang with a source-offset map, defang, normalization)
+and `src/lib/utils/extract-iocs.js` (detection, priority masking and deduplication), two pure
+modules exercised by `npm run smoke`; `src/lib/components/IocExtractorModal.svelte` renders the UI.
+
 ## Getting started
 
 ```bash
@@ -104,7 +128,7 @@ src/
       tool-repository.js          # read-side repository over the catalog
       clipboard.js                # copy-to-clipboard with legacy fallback
       favorites.js                # starred tools persisted in localStorage
-    utils/                    # pure helpers (filtering, counting, colors)
+    utils/                    # pure helpers (refang/defang, IoC extraction, filtering, counting, colors)
     components/               # Svelte UI components
   App.svelte                  # page layout & state
   main.js                     # entry point: builds the container, mounts the app
