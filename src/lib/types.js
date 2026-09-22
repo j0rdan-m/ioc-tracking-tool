@@ -128,5 +128,53 @@
  * @property {BatchCheckState[]} checkStates One entry per compatible provider check.
  */
 
+/**
+ * Analyst qualification of an investigation. Never set automatically: only the
+ * analyst assigns it, and no provider answer is ever turned into a verdict.
+ *
+ * @typedef {'unknown' | 'benign' | 'suspicious' | 'malicious'} InvestigationVerdict
+ */
+
+/**
+ * Serializable snapshot of one provider check, kept with an investigation.
+ *
+ * @typedef {Object} InvestigationCheckSnapshot
+ * @property {string} id          Stable check identifier.
+ * @property {string} label       Check label.
+ * @property {string | null} toolId Catalog tool backing the check, if any.
+ * @property {string} status      `ok` | `empty` | `error` | `cancelled`.
+ * @property {number | null} ms   Duration in milliseconds.
+ * @property {string | null} summary Provider one-liner.
+ * @property {FastCheckField[]} fields Key facts returned by the provider.
+ * @property {string | null} message Provider message (error detail included).
+ */
+
+/**
+ * Latest analysis stored for an investigation: only the most recent run is
+ * kept, older snapshots are intentionally not retained in this version.
+ *
+ * @typedef {Object} InvestigationAnalysisSnapshot
+ * @property {string} checkedAt ISO date of the run.
+ * @property {InvestigationCheckSnapshot[]} checks One entry per compatible check.
+ */
+
+/**
+ * One locally stored investigation: the indicator, the analyst qualification
+ * (verdict, tags, notes) and the latest provider results. Keyed on
+ * `typeId:normalized` so refanged and defanged spellings collapse into one.
+ *
+ * @typedef {Object} InvestigationEntry
+ * @property {string} id           Storage key (`${typeId}:${normalized}`).
+ * @property {string} typeId       IoC type identifier.
+ * @property {string} normalized   Exploitable value used as the identity (AC14).
+ * @property {string} defanged     Neutralized form shown in the UI.
+ * @property {string} firstAnalyzedAt ISO date of the first analysis or save.
+ * @property {string} lastAnalyzedAt  ISO date of the latest analysis or save.
+ * @property {InvestigationVerdict} verdict Analyst qualification (default `unknown`).
+ * @property {string[]} tags       Free-form labels used for filtering.
+ * @property {string} notes        Free-form analyst notes.
+ * @property {InvestigationAnalysisSnapshot | null} latestAnalysis Latest provider results.
+ */
+
 export {};
 

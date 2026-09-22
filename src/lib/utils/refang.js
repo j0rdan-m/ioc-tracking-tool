@@ -100,7 +100,7 @@ export function stripEdgePunctuation(value) {
  *   schemes are case-insensitive, URL paths are not).
  *
  * @param {string} raw Value as encountered in the text (possibly defanged).
- * @param {'ip' | 'domain' | 'url' | 'file' | 'email'} typeId
+  * @param {import('../types.js').IocTypeId} typeId
  * @returns {string}
  */
 export function normalizeIoc(raw, typeId) {
@@ -123,7 +123,7 @@ export function normalizeIoc(raw, typeId) {
  * Hashes contain no scheme, dots or at-sign, so they are returned unchanged.
  *
  * @param {string} normalized The exploitable (refanged) value.
- * @param {'ip' | 'domain' | 'url' | 'file' | 'email'} typeId
+  * @param {import('../types.js').IocTypeId} typeId
  * @returns {string}
  */
 export function defangIoc(normalized, typeId) {

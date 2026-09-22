@@ -1,6 +1,7 @@
 <script>
   import CategoryFilter from './lib/components/CategoryFilter.svelte';
   import FastAnalyzeModal from './lib/components/FastAnalyzeModal.svelte';
+  import HistoryModal from './lib/components/HistoryModal.svelte';
   import IocExtractorModal from './lib/components/IocExtractorModal.svelte';
   import IocTypeFilter from './lib/components/IocTypeFilter.svelte';
   import SearchBar from './lib/components/SearchBar.svelte';
@@ -42,6 +43,7 @@
   // the toolbar button, or the normalized value of an extracted IoC.
   let fastAnalyzePrefill = $state('');
   let extractorOpen = $state(false);
+  let historyOpen = $state(false);
   let catalogPromise = $state(toolRepository.getCatalog());
 
   // IoC shape detected in the current query (null when it is not an observable).
@@ -98,6 +100,18 @@
    */
   function analyzeExtracted(normalized) {
     extractorOpen = false;
+    openFastAnalyze(normalized);
+  }
+
+  /**
+   * "Run analysis again" coming from the local history: the stored entry is
+   * updated with the new results (same key), keeping its verdict, notes, tags
+   * and first analysis date.
+   *
+   * @param {string} normalized
+   */
+  function analyzeFromHistory(normalized) {
+    historyOpen = false;
     openFastAnalyze(normalized);
   }
 </script>
@@ -158,6 +172,14 @@
         >
           🔍 Extract IoCs
         </button>
+        <button
+          type="button"
+          class="history-open"
+          onclick={() => (historyOpen = true)}
+          title="Your locally stored investigations (verdicts, tags, notes)"
+        >
+          🗒 History
+        </button>
         <CategoryFilter
           categories={catalog.categories}
           bind:selectedId={selectedCategoryId}
@@ -208,6 +230,7 @@
 
       <FastAnalyzeModal bind:open={fastAnalyzeOpen} {catalog} prefill={fastAnalyzePrefill} />
       <IocExtractorModal bind:open={extractorOpen} {catalog} onAnalyze={analyzeExtracted} />
+      <HistoryModal bind:open={historyOpen} {catalog} onAnalyze={analyzeFromHistory} />
     {:catch error}
       <p class="status status--error" role="alert">
         Could not load the tool catalog: {error.message}
@@ -329,8 +352,9 @@
     background: var(--color-accent-strong);
   }
 
-  /* Secondary toolbar action: outlined pill, same shape as the favorites one. */
-  .extract-iocs {
+  /* Secondary toolbar actions: outlined pills, same shape as the favorites one. */
+  .extract-iocs,
+  .history-open {
     padding: 0.4rem 0.95rem;
     font: inherit;
     font-size: 0.86rem;
@@ -345,7 +369,8 @@
       border-color 0.15s ease;
   }
 
-  .extract-iocs:hover {
+  .extract-iocs:hover,
+  .history-open:hover {
     color: var(--color-text);
     border-color: var(--color-accent);
   }

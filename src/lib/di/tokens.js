@@ -11,4 +11,5 @@ export const DI_TOKENS = Object.freeze({
   favorites: Symbol('di.favorites'),
   healthCatalog: Symbol('di.healthCatalog'),
   fastAnalyzer: Symbol('di.fastAnalyzer'),
+  investigations: Symbol('di.investigations'),
 });

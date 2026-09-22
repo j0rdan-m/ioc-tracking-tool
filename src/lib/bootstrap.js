@@ -5,6 +5,7 @@ import { DI_TOKENS } from './di/tokens.js';
 import { ClipboardService } from './services/clipboard.js';
 import { FavoritesService } from './services/favorites.js';
 import { FastAnalyzerService } from './services/fast-analyze.js';
+import { InvestigationHistoryService } from './services/investigation-history.js';
 import { StaticToolDataSource } from './services/static-tool-data-source.js';
 import { ToolRepository } from './services/tool-repository.js';
 
@@ -41,6 +42,10 @@ export function createAppContainer() {
   // Fast-analyze lookups run directly from the browser against free keyless
   // APIs; the global fetch is used by default and stays injectable for tests.
   container.register(DI_TOKENS.fastAnalyzer, () => new FastAnalyzerService());
+
+  // Local investigation history (analyst verdicts, tags, notes): browser
+  // storage only, no account and no backend — same approach as the favorites.
+  container.register(DI_TOKENS.investigations, () => new InvestigationHistoryService());
 
   return container;
 }

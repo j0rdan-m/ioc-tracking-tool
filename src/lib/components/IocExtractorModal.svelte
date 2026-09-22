@@ -4,6 +4,7 @@
   import { computeBatchStatus, runBatchAnalysis } from '../utils/batch-analyze.js';
   import { extractIocs } from '../utils/extract-iocs.js';
   import { getDeepLinks } from '../utils/deep-links.js';
+  import { buildAnalysisSnapshot } from '../utils/history-filter.js';
 
   /**
    * "Extract IoCs" modal: paste a whole text (log, ticket, e-mail body) and the
@@ -28,6 +29,8 @@
   const clipboard = inject(DI_TOKENS.clipboard);
   /** @type {import('../services/fast-analyze.js').FastAnalyzerService} */
   const analyzer = inject(DI_TOKENS.fastAnalyzer);
+  /** @type {import('../services/investigation-history.js').InvestigationHistoryService} */
+  const history = inject(DI_TOKENS.investigations);
 
   let text = $state('');
   /** @type {import('../utils/extract-iocs.js').ExtractIocsResult | null} */
@@ -221,6 +224,46 @@
       : [...detailIds, id];
   }
 
+  // Ids already written to the local history during the current batch.
+  /** @type {Set<string>} */
+  const recordedIds = new Set();
+
+  /**
+   * Records every row that reached a final state in the local investigation
+   * history. The entry is created on the first analysis of the indicator and
+   * updated afterwards, never duplicated. Cancelled rows are skipped: they
+   * never ran, so they must not replace an earlier snapshot.
+   *
+   * @param {import('../types.js').BatchRow[]} rows
+   */
+  function recordFinishedRows(rows) {
+    for (const row of rows) {
+      const status = computeBatchStatus(row.checkStates);
+      if (status === 'Pending' || status === 'Running' || status === 'Cancelled') {
+        continue;
+      }
+      if (recordedIds.has(row.ioc.id)) {
+        continue;
+      }
+      recordedIds.add(row.ioc.id);
+      history.upsert(row.ioc, buildAnalysisSnapshot(row.checkStates, new Date().toISOString()));
+    }
+  }
+
+  /** Explicit "keep this indicator" action: no analysis, but a stored entry. */
+  /** @type {string | null} */
+  let savedKey = $state(null);
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
+  let savedTimer;
+
+  /** @param {import('../types.js').ExtractedIoc} ioc */
+  function saveIoc(ioc) {
+    history.upsert(ioc);
+    savedKey = ioc.id;
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => (savedKey = null), 2000);
+  }
+
   /**
    * Runs the compatible checks for every selected IoC, at most 3 IoCs at a
    * time (each IoC runs its own checks in parallel). Results are published
@@ -234,6 +277,7 @@
     }
     batchGeneration += 1;
     const generation = batchGeneration;
+    recordedIds.clear();
     detailIds = [];
     batchRows = [];
     stopping = false;
@@ -247,6 +291,7 @@
           // A superseded batch must not keep feeding the table.
           if (generation === batchGeneration) {
             batchRows = rows;
+            recordFinishedRows(rows);
           }
         },
       },
@@ -492,6 +537,16 @@
                             : label}
                       </button>
                     {/each}
+                    <!-- Saving works for every type, including hashes with no automated check. -->
+                    <button
+                      type="button"
+                      class="ioc__copy"
+                      class:ioc__copy--copied={savedKey === ioc.id}
+                      title="Keep this indicator in the local investigation history"
+                      onclick={() => saveIoc(ioc)}
+                    >
+                      {savedKey === ioc.id ? 'Saved locally ✓' : '🗒 Save to history'}
+                    </button>
                     {#if analyzableTypes.has(ioc.typeId)}
                       <button
                         type="button"

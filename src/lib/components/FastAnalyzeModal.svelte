@@ -4,6 +4,8 @@
   import { DI_TOKENS } from '../di/tokens.js';
   import { detectIocType } from '../utils/detect-ioc-type.js';
   import { getDeepLinks } from '../utils/deep-links.js';
+  import { buildAnalysisSnapshot } from '../utils/history-filter.js';
+  import { defangIoc, normalizeIoc } from '../utils/refang.js';
 
   /**
    * "Fast analyze" modal: paste an IoC, hit Start, and the free unauthenticated
@@ -21,6 +23,8 @@
 
   /** @type {import('../services/fast-analyze.js').FastAnalyzerService} */
   const analyzer = inject(DI_TOKENS.fastAnalyzer);
+  /** @type {import('../services/investigation-history.js').InvestigationHistoryService} */
+  const history = inject(DI_TOKENS.investigations);
 
   let value = $state('');
   /** @type {'idle' | 'running' | 'done'} */
@@ -114,7 +118,10 @@
     abortInFlight();
     runController = new AbortController();
     iocTypeId = detected;
-    submittedValue = value.trim();
+    // Normalized (refanged, canonical) value: it is what providers receive and
+    // what keys the local investigation history, so `EXAMPLE.COM` and
+    // `example.com` are one investigation (AC14).
+    submittedValue = normalizeIoc(value, detected);
     const definitions = analyzer.getChecks(detected);
     checks = definitions.map((def) => ({ def, status: /** @type {'pending'} */ ('pending'), result: null, ms: null }));
     if (definitions.length === 0) {
@@ -146,9 +153,31 @@
           pending -= 1;
           if (pending === 0) {
             phase = 'done';
+            saveToHistory();
           }
         });
     });
+  }
+
+  /**
+   * Records the finished run in the local investigation history: the entry is
+   * created on the first analysis of the indicator and updated afterwards
+   * (never duplicated), leaving the analyst verdict, notes and tags untouched.
+   */
+  function saveToHistory() {
+    if (!iocTypeId || submittedValue === '' || checks.length === 0) {
+      return;
+    }
+    const typeId = /** @type {import('../types.js').IocTypeId} */ (iocTypeId);
+    history.upsert(
+      {
+        id: `${typeId}:${submittedValue}`,
+        typeId,
+        normalized: submittedValue,
+        defanged: defangIoc(submittedValue, typeId),
+      },
+      buildAnalysisSnapshot(checks, new Date().toISOString()),
+    );
   }
 
   /** @param {string} iocType @returns {string} */
