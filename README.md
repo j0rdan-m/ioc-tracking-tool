@@ -60,6 +60,35 @@ Implementation: `src/lib/utils/refang.js` (refang with a source-offset map, defa
 and `src/lib/utils/extract-iocs.js` (detection, priority masking and deduplication), two pure
 modules exercised by `npm run smoke`; `src/lib/components/IocExtractorModal.svelte` renders the UI.
 
+## Batch analysis
+
+Selecting indicators in the **🔍 Extract IoCs** modal (all of them are selected by default, or use
+*Select all* / *Deselect all*) and pressing **⚡ Analyze selected** runs the compatible keyless checks
+for every selected IoC in one go — no need to open Fast analyze once per indicator:
+
+- **Normalized input**: the refanged, canonical value is what providers receive, so
+  `hxxps://evil[.]example[.]com/login` is analysed as `https://evil.example.com/login`;
+- **Per-type checks**: IP → IP intelligence + RDAP; domain → RDAP + crt.sh; URL → RDAP + crt.sh on
+  its **hostname** (the URL itself stays the indicator); e-mail → RDAP on its domain; hashes and
+  usernames have no keyless provider, so they show **No automated check available** and only offer
+  deep links;
+- **Bounded parallelism**: at most 3 IoCs at a time (each IoC runs its own checks in parallel), so a
+  large paste never floods the public providers;
+- **Progressive results**: a consolidated table (IoC, type, ASN / Network, RDAP, TLS, global status)
+  fills in as answers arrive, with a `N / M checks completed` gauge, and every row expands into the
+  raw provider answers (fields, duration, provider message) plus its "go further" links;
+- **Isolated failures**: a provider error, a rate limit, a timeout or an empty answer only affects
+  its own check — the other IoCs keep running. Nothing is turned into a `Safe` / `Malicious` verdict:
+  the provider message is displayed verbatim and the interpretation stays with the analyst;
+- **Global status per IoC**: `Complete`, `Partial`, `Error`, `No automated check available` (or
+  `Cancelled` / `Running` while the batch is live);
+- **Stop analysis**: no further request is launched, results already obtained are kept and the
+  indicators the queue never reached flip to `Cancelled`; closing the modal also stops the batch.
+
+Implementation: `src/lib/utils/batch-analyze.js` (queue, bounded concurrency, status derivation —
+pure and framework-agnostic, exercised by `npm run smoke`) driven from
+`src/lib/components/IocExtractorModal.svelte`.
+
 ## Getting started
 
 ```bash
@@ -128,7 +157,7 @@ src/
       tool-repository.js          # read-side repository over the catalog
       clipboard.js                # copy-to-clipboard with legacy fallback
       favorites.js                # starred tools persisted in localStorage
-    utils/                    # pure helpers (refang/defang, IoC extraction, filtering, counting, colors)
+    utils/                    # pure helpers (refang/defang, IoC extraction, batch analysis, filtering, colors)
     components/               # Svelte UI components
   App.svelte                  # page layout & state
   main.js                     # entry point: builds the container, mounts the app

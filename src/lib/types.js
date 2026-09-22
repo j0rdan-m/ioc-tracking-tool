@@ -91,5 +91,42 @@
  * @property {(value: string, options?: { signal?: AbortSignal }) => Promise<FastCheckResult>} run
  */
 
+/**
+ * Identifier of an IoC type supported by the catalog and its filters.
+ *
+ * @typedef {'ip' | 'domain' | 'url' | 'file' | 'email' | 'username'} IocTypeId
+ */
+
+/**
+ * State of one provider check inside a batch analysis.
+ *
+ * @typedef {'pending' | 'running' | 'ok' | 'empty' | 'error' | 'cancelled'} BatchCheckStatus
+ */
+
+/**
+ * Global status of one IoC in a batch analysis (see `computeBatchStatus`).
+ *
+ * @typedef {'Pending' | 'Running' | 'Complete' | 'Partial' | 'Error' | 'Cancelled'
+ *           | 'No automated check available'} BatchIocStatus
+ */
+
+/**
+ * One provider check of a batch analysis, updated as it settles.
+ *
+ * @typedef {Object} BatchCheckState
+ * @property {FastCheckDefinition} def     Check definition (id, label, toolId, run).
+ * @property {BatchCheckStatus} status     Current state of the check.
+ * @property {FastCheckResult | null} result Normalized provider answer once settled.
+ * @property {number | null} ms            Duration in milliseconds (null while pending).
+ */
+
+/**
+ * One IoC of a batch analysis and the state of each of its checks.
+ *
+ * @typedef {Object} BatchRow
+ * @property {ExtractedIoc} ioc          The analysed indicator (normalized value used).
+ * @property {BatchCheckState[]} checkStates One entry per compatible provider check.
+ */
+
 export {};
 

@@ -1,6 +1,7 @@
 <script>
   import { inject } from '../di/provide.js';
   import { DI_TOKENS } from '../di/tokens.js';
+  import { computeBatchStatus, runBatchAnalysis } from '../utils/batch-analyze.js';
   import { extractIocs } from '../utils/extract-iocs.js';
   import { getDeepLinks } from '../utils/deep-links.js';
 
@@ -12,6 +13,11 @@
    * its type has keyless checks, and "go further" deep links revealed only by
    * an explicit click. The pasted text and the results survive close/reopen so
    * the analyst can edit and re-extract.
+   *
+   * The same list drives the batch analysis: selected indicators run their
+   * compatible checks in one operation (3 IoCs at a time), progressively
+   * filling a consolidated table whose rows expand into the raw provider
+   * answers. Stopping keeps what already settled.
    *
    * @type {{ open?: boolean, catalog: import('../types.js').ToolCatalog,
    *          onAnalyze?: (normalized: string) => void }}
@@ -66,6 +72,202 @@
     ),
   );
 
+  /** Tool lookup used by the detail blocks to link back to the catalog. */
+  const toolById = $derived(new Map(catalog.tools.map((tool) => [tool.id, tool])));
+
+  // --- Batch analysis ------------------------------------------------------
+  // Every fresh extraction selects all the indicators it found, so "Analyze
+  // selected" works right after a paste. Selection only decides what the next
+  // batch runs: the IoCs themselves are normalized by the extractor.
+  /** @type {string[]} */
+  let selectedIds = $state([]);
+  /** Snapshots emitted by the batch runner; assigned on every update so Svelte
+   *  sees the changes (the runner mutates its own rows). */
+  /** @type {import('../types.js').BatchRow[]} */
+  let batchRows = $state([]);
+  let analysisRunning = $state(false);
+  let stopping = $state(false);
+  /** Ids whose detailed block is expanded. */
+  /** @type {string[]} */
+  let detailIds = $state([]);
+  /** @type {ReturnType<typeof runBatchAnalysis> | null} */
+  let batchRun = null;
+  // Incremented on every launch so a late update (or the completion) of a
+  // previous batch can never overwrite the state of the current one.
+  let batchGeneration = 0;
+
+  /** Check states considered final for the progress gauge. */
+  /** @type {import('../types.js').BatchCheckStatus[]} */
+  const SETTLED_STATUSES = ['ok', 'empty', 'error', 'cancelled'];
+
+  const progress = $derived.by(() => {
+    const total = batchRows.reduce((count, row) => count + row.checkStates.length, 0);
+    const settled = batchRows.reduce(
+      (count, row) =>
+        count + row.checkStates.filter((state) => SETTLED_STATUSES.includes(state.status)).length,
+      0,
+    );
+    return { total, settled, percent: total === 0 ? 0 : Math.round((settled / total) * 100) };
+  });
+
+  /** @type {Record<import('../types.js').BatchCheckStatus, string>} */
+  const CHECK_STATUS_LABELS = {
+    pending: 'Pending',
+    running: 'Running',
+    ok: 'OK',
+    empty: 'Empty',
+    error: 'Error',
+    cancelled: 'Cancelled',
+  };
+
+  /**
+   * @param {import('../types.js').BatchCheckStatus} status
+   * @returns {string}
+   */
+  function checkStatusLabel(status) {
+    return CHECK_STATUS_LABELS[status];
+  }
+
+  /**
+   * Short table cell for a check column; "—" when the IoC type has no such
+   * check at all (e.g. no TLS column for an IP).
+   *
+   * @param {import('../types.js').BatchCheckState | null} state
+   * @returns {string}
+   */
+  function checkCell(state) {
+    if (!state) {
+      return '—';
+    }
+    if (state.status === 'ok') return '✓ OK';
+    if (state.status === 'empty') return '∅ Empty';
+    if (state.status === 'error') return '✗ Error';
+    if (state.status === 'cancelled') return '⊘ Cancelled';
+    return state.status === 'running' ? '… Running' : '… Pending';
+  }
+
+  /**
+   * @param {import('../types.js').BatchRow} row
+   * @param {string} needle Part of the check id (`intel`, `rdap`, `certs`).
+   * @returns {import('../types.js').BatchCheckState | null}
+   */
+  function findCheck(row, needle) {
+    return row.checkStates.find((state) => state.def.id.includes(needle)) ?? null;
+  }
+
+  /**
+   * @param {import('../types.js').BatchCheckState | null} state
+   * @param {string} label
+   * @returns {string | null}
+   */
+  function fieldValue(state, label) {
+    return state?.result?.fields?.find((field) => field.label === label)?.value ?? null;
+  }
+
+  /**
+   * "ASN / Network" column: IP intelligence when the provider answered,
+   * otherwise the RDAP network name (IPs only — other types show "—").
+   *
+   * @param {import('../types.js').BatchRow} row
+   * @returns {string}
+   */
+  function networkCell(row) {
+    const intel = findCheck(row, 'intel');
+    if (intel?.status === 'ok') {
+      const value = [fieldValue(intel, 'ASN'), fieldValue(intel, 'Company')]
+        .filter(Boolean)
+        .join(' · ');
+      return value !== '' ? value : '✓';
+    }
+    const rdap = findCheck(row, 'rdap');
+    const network = fieldValue(rdap, 'Network');
+    return rdap?.status === 'ok' && network ? network : '—';
+  }
+
+  /**
+   * "TLS" column: number of certificate entries reported by crt.sh.
+   *
+   * @param {import('../types.js').BatchRow} row
+   * @returns {string}
+   */
+  function tlsCell(row) {
+    const certs = findCheck(row, 'certs');
+    if (certs?.status === 'ok') {
+      const count = certs.result?.summary?.match(/\d+/)?.[0];
+      return count ? `${count} certs` : '✓ OK';
+    }
+    return checkCell(certs);
+  }
+
+  /** @param {string} id */
+  function toggleSelected(id) {
+    selectedIds = selectedIds.includes(id)
+      ? selectedIds.filter((entry) => entry !== id)
+      : [...selectedIds, id];
+  }
+
+  function selectAll() {
+    selectedIds = (result?.iocs ?? []).map((ioc) => ioc.id);
+  }
+
+  function deselectAll() {
+    selectedIds = [];
+  }
+
+  /** @param {string} id */
+  function toggleDetail(id) {
+    detailIds = detailIds.includes(id)
+      ? detailIds.filter((entry) => entry !== id)
+      : [...detailIds, id];
+  }
+
+  /**
+   * Runs the compatible checks for every selected IoC, at most 3 IoCs at a
+   * time (each IoC runs its own checks in parallel). Results are published
+   * progressively through the runner's snapshots — the table never waits for
+   * the whole batch to finish.
+   */
+  function analyzeSelected() {
+    const iocs = (result?.iocs ?? []).filter((ioc) => selectedIds.includes(ioc.id));
+    if (iocs.length === 0) {
+      return;
+    }
+    batchGeneration += 1;
+    const generation = batchGeneration;
+    detailIds = [];
+    batchRows = [];
+    stopping = false;
+    analysisRunning = true;
+    const run = runBatchAnalysis(
+      iocs,
+      (typeId) => analyzer.getChecks(/** @type {import('../types.js').IocTypeId} */ (typeId)),
+      {
+        concurrency: 3,
+        onUpdate: (rows) => {
+          // A superseded batch must not keep feeding the table.
+          if (generation === batchGeneration) {
+            batchRows = rows;
+          }
+        },
+      },
+    );
+    batchRun = run;
+    run.done.then(() => {
+      if (generation !== batchGeneration) {
+        return;
+      }
+      analysisRunning = false;
+      stopping = false;
+      batchRun = null;
+    });
+  }
+
+  /** Stops the running batch: in-flight checks settle, queued IoCs cancel. */
+  function stopAnalysis() {
+    stopping = true;
+    batchRun?.stop();
+  }
+
   /** @type {string | null} Last copy outcome, as `<iocId>:<variant>` (or with a `:failed` suffix). */
   let copiedKey = $state(null);
   /** @type {ReturnType<typeof setTimeout> | undefined} */
@@ -94,13 +296,29 @@
     if (text.trim() === '') {
       return;
     }
+    // A new extraction invalidates the previous batch and selects everything
+    // it found, so "Analyze selected" is immediately usable.
+    batchRun?.stop();
+    batchRun = null;
     result = extractIocs(text);
+    selectedIds = result.iocs.map((ioc) => ioc.id);
+    batchRows = [];
+    detailIds = [];
+    analysisRunning = false;
+    stopping = false;
   }
 
   function clearAll() {
+    batchRun?.stop();
+    batchRun = null;
     text = '';
     result = null;
     expandedIds = [];
+    selectedIds = [];
+    batchRows = [];
+    detailIds = [];
+    analysisRunning = false;
+    stopping = false;
   }
 
   /** @param {string} id */
@@ -123,6 +341,10 @@
   }
 
   function close() {
+    // Closing stops any running batch: no request is issued while the results
+    // are out of sight, and everything already obtained is kept for the next
+    // opening.
+    batchRun?.stop();
     open = false;
   }
 
@@ -216,11 +438,45 @@
             {result.iocs.length}
             IoC{result.iocs.length === 1 ? '' : 's'} detected
           </p>
+
+          <!-- Selection: what the next batch will analyse (all by default). -->
+          <div class="batch__bar">
+            <span class="batch__selected" role="status">
+              {selectedIds.length}
+              IoC selected
+            </span>
+            <button type="button" class="ioc__copy" onclick={selectAll}>Select all</button>
+            <button type="button" class="ioc__copy" onclick={deselectAll}>Deselect all</button>
+            <button
+              type="button"
+              class="ioc__analyze"
+              disabled={selectedIds.length === 0 || analysisRunning}
+              title="Run the compatible keyless checks for every selected IoC"
+              onclick={analyzeSelected}
+            >
+              ⚡ Analyze selected
+            </button>
+            {#if analysisRunning}
+              <button type="button" class="ioc__copy" disabled={stopping} onclick={stopAnalysis}>
+                {stopping ? 'Stopping…' : 'Stop analysis'}
+              </button>
+            {/if}
+          </div>
+
           <ul class="iocs" aria-label="Extracted indicators">
             {#each result.iocs as ioc (ioc.id)}
               <li class="ioc">
                 <div class="ioc__head">
-                  <span class="ioc__type">{iocLabel(ioc)}</span>
+                  <div class="ioc__ident">
+                    <input
+                      class="ioc__check"
+                      type="checkbox"
+                      checked={selectedIds.includes(ioc.id)}
+                      aria-label={`Select ${ioc.normalized} for batch analysis`}
+                      onchange={() => toggleSelected(ioc.id)}
+                    />
+                    <span class="ioc__type">{iocLabel(ioc)}</span>
+                  </div>
                   <div class="ioc__actions">
                     {#each [['raw', 'Copy raw'], ['normalized', 'Copy normalized'], ['defanged', 'Copy defanged']] as [variant, label] (variant)}
                       <button
@@ -287,6 +543,176 @@
             {/each}
 
           </ul>
+
+          {#if batchRows.length > 0}
+            <section class="batch" aria-label="Batch analysis">
+              <div class="batch__head">
+                <span class="batch__progress" role="status">
+                  {progress.total === 0
+                    ? 'No automated check to run for this selection'
+                    : `${progress.settled} / ${progress.total} checks completed`}
+                </span>
+                <span class="batch__phase">
+                  {analysisRunning ? (stopping ? 'Stopping…' : 'Analysis in progress…') : 'Finished'}
+                </span>
+              </div>
+              {#if progress.total > 0}
+                <div
+                  class="batch__gauge"
+                  role="progressbar"
+                  aria-label="Batch analysis progress"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow={progress.percent}
+                >
+                  <span class="batch__gauge-fill" style="width: {progress.percent}%"></span>
+                </div>
+              {/if}
+
+              <table class="batch__table">
+                <thead>
+                  <tr>
+                    <th scope="col">IoC</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">ASN / Network</th>
+                    <th scope="col">RDAP</th>
+                    <th scope="col">TLS</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each batchRows as row (row.ioc.id)}
+                    {@const status = computeBatchStatus(row.checkStates)}
+                    <tr>
+                      <td class="batch__ioc">
+                        <button
+                          type="button"
+                          class="batch__expand"
+                          aria-expanded={detailIds.includes(row.ioc.id)}
+                          onclick={() => toggleDetail(row.ioc.id)}
+                        >
+                          <span aria-hidden="true"
+                            >{detailIds.includes(row.ioc.id) ? '▼' : '▶'}</span
+                          >
+                          <code>{row.ioc.defanged}</code>
+                        </button>
+                      </td>
+                      <td>{iocLabel(row.ioc)}</td>
+                      <td>{networkCell(row)}</td>
+                      <td>{checkCell(findCheck(row, 'rdap'))}</td>
+                      <td>{tlsCell(row)}</td>
+                      <td>
+                        <span
+                          class="batch__status"
+                          class:batch__status--ok={status === 'Complete'}
+                          class:batch__status--warn={status === 'Partial'}
+                          class:batch__status--bad={status === 'Error'}
+                          >{status}</span
+                        >
+                      </td>
+                    </tr>
+                    {#if detailIds.includes(row.ioc.id)}
+                      {@const links = getDeepLinks(row.ioc.typeId, row.ioc.normalized, catalog.tools)}
+                      <tr class="batch__detail">
+                        <td colspan="6">
+                          {#if row.checkStates.length === 0}
+                            <p class="ioc__nolinks">
+                              No automated check available for this indicator type — the links below
+                              open it in a full tool.
+                            </p>
+                          {:else}
+                            <ul class="checks" aria-label={`Checks for ${row.ioc.normalized}`}>
+                              {#each row.checkStates as check (check.def.id)}
+                                <li class="check">
+                                  <div class="check__head">
+                                    <span
+                                      class="check__dot"
+                                      class:check__dot--ok={check.status === 'ok'}
+                                      class:check__dot--empty={check.status === 'empty'}
+                                      class:check__dot--error={check.status === 'error'}
+                                      class:check__dot--pending={check.status === 'pending' ||
+                                        check.status === 'running'}
+                                      aria-hidden="true"
+                                    ></span>
+                                    <span class="check__label">{check.def.label}</span>
+                                    <span class="batch__check-status"
+                                      >{checkStatusLabel(check.status)}</span
+                                    >
+                                    {#if check.ms != null}
+                                      <span class="check__ms">{check.ms} ms</span>
+                                    {/if}
+                                    {#if check.def.toolId}
+                                      {@const tool = toolById.get(check.def.toolId)}
+                                      {#if tool}
+                                        <a
+                                          class="check__open"
+                                          href={tool.url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                        >
+                                          Open {tool.name} ↗
+                                        </a>
+                                      {/if}
+                                    {/if}
+                                  </div>
+                                  {#if check.result?.summary}
+                                    <p class="check__summary">{check.result.summary}</p>
+                                  {/if}
+                                  {#if check.result && check.result.fields.length > 0}
+                                    <dl class="check__fields">
+                                      {#each check.result.fields as field (field.label)}
+                                        <div class="check__field">
+                                          <dt>{field.label}</dt>
+                                          <dd
+                                            class="check__value"
+                                            class:check__value--warn={field.tone === 'warn'}
+                                            class:check__value--bad={field.tone === 'bad'}
+                                            >{field.value}</dd
+                                          >
+                                        </div>
+                                      {/each}
+                                    </dl>
+                                  {/if}
+                                  {#if check.result?.message}
+                                    <p
+                                      class="check__message"
+                                      class:check__message--error={check.status === 'error'}
+                                      >{check.result.message}</p
+                                    >
+                                  {/if}
+                                </li>
+                              {/each}
+                            </ul>
+                          {/if}
+                          {#if links.length > 0}
+                            <p class="gofurther__title">Go further</p>
+                            <ul
+                              class="gofurther__list"
+                              aria-label="Open the indicator in a full tool"
+                            >
+                              {#each links as link (link.toolId)}
+                                <li>
+                                  <a
+                                    class="gofurther__link"
+                                    href={link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    <span class="gofurther__name">{link.name} ↗</span>
+                                    <span class="gofurther__hint">{link.hint}</span>
+                                  </a>
+                                </li>
+                              {/each}
+                            </ul>
+                          {/if}
+                        </td>
+                      </tr>
+                    {/if}
+                  {/each}
+                </tbody>
+              </table>
+            </section>
+          {/if}
         {/if}
       {/if}
 
@@ -636,6 +1062,301 @@
   .modal__foot {
     margin: 0.25rem 0 0;
     font-size: 0.72rem;
+    color: var(--color-text-muted);
+  }
+
+  /* ---------- Selection & batch analysis ---------- */
+  .ioc__ident {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .ioc__check {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--color-accent);
+    cursor: pointer;
+  }
+
+  .batch__bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+  }
+
+  .batch__selected {
+    margin-right: auto;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+
+  .batch {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem 0.9rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+  }
+
+  .batch__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .batch__progress {
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  .batch__phase {
+    font-size: 0.78rem;
+    color: var(--color-text-muted);
+  }
+
+  .batch__gauge {
+    height: 0.4rem;
+    overflow: hidden;
+    background: rgb(148 163 184 / 0.18);
+    border-radius: 999px;
+  }
+
+  .batch__gauge-fill {
+    display: block;
+    height: 100%;
+    background: var(--color-accent);
+    transition: width 0.2s ease;
+  }
+
+  .batch__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    text-align: left;
+  }
+
+  .batch__table th {
+    padding: 0.3rem 0.45rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .batch__table td {
+    padding: 0.4rem 0.45rem;
+    vertical-align: top;
+    border-bottom: 1px solid rgb(36 52 92 / 0.6);
+  }
+
+  .batch__ioc {
+    min-width: 11rem;
+  }
+
+  .batch__expand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0;
+    font: inherit;
+    color: var(--color-text);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+  }
+
+  .batch__expand code {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    word-break: break-all;
+  }
+
+  .batch__check-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+  }
+
+  .batch__status {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--color-text-muted);
+    background: rgb(148 163 184 / 0.12);
+    border-radius: 999px;
+  }
+
+  .batch__status--ok {
+    color: var(--color-success);
+    background: rgb(74 222 128 / 0.14);
+  }
+
+  .batch__status--warn {
+    color: rgb(250 204 21);
+    background: rgb(250 204 21 / 0.14);
+  }
+
+  .batch__status--bad {
+    color: var(--color-danger);
+    background: rgb(248 113 113 / 0.14);
+  }
+
+  .batch__detail td {
+    padding: 0.55rem 0.45rem 0.7rem;
+    background: rgb(24 37 74 / 0.5);
+  }
+
+  .checks {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .check {
+    padding: 0.6rem 0.7rem;
+    background: var(--color-surface-raised);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+  }
+
+  .check__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .check__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: rgb(148 163 184 / 0.7);
+  }
+
+  .check__dot--pending {
+    animation: check-pulse 1.2s ease-in-out infinite;
+  }
+
+  .check__dot--ok {
+    background: var(--color-success);
+    box-shadow: 0 0 6px rgb(74 222 128 / 0.8);
+  }
+
+  .check__dot--empty {
+    background: var(--color-accent);
+  }
+
+  .check__dot--error {
+    background: var(--color-danger);
+    box-shadow: 0 0 6px rgb(248 113 113 / 0.8);
+  }
+
+  @keyframes check-pulse {
+    0%,
+    100% {
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  .check__label {
+    font-weight: 600;
+    font-size: 0.88rem;
+  }
+
+  .check__ms {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+  }
+
+  .check__open {
+    margin-left: auto;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-accent);
+    text-decoration: none;
+  }
+
+  .check__open:hover {
+    text-decoration: underline;
+  }
+
+  .check__summary {
+    margin: 0.35rem 0 0;
+    font-size: 0.85rem;
+  }
+
+  .check__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0.5rem 0 0;
+  }
+
+  .check__field {
+    display: flex;
+    gap: 0.75rem;
+  }
+
+  .check__field dt {
+    flex: 0 0 8.5rem;
+    font-size: 0.76rem;
+    color: var(--color-text-muted);
+  }
+
+  .check__value {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    white-space: pre-line;
+    word-break: break-word;
+  }
+
+  .check__value--warn {
+    color: rgb(250 204 21);
+  }
+
+  .check__value--bad {
+    color: var(--color-danger);
+  }
+
+  .check__message {
+    margin: 0.4rem 0 0;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+  }
+
+  .check__message--error {
+    color: var(--color-danger);
+  }
+
+  .gofurther__title {
+    margin: 0.6rem 0 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
     color: var(--color-text-muted);
   }
 </style>

@@ -16,6 +16,7 @@ import { detectIocType } from '../src/lib/utils/detect-ioc-type.js';
 import { FavoritesService } from '../src/lib/services/favorites.js';
 import { FastAnalyzerService } from '../src/lib/services/fast-analyze.js';
 import { getDeepLinks } from '../src/lib/utils/deep-links.js';
+import { computeBatchStatus, runBatchAnalysis } from '../src/lib/utils/batch-analyze.js';
 import { extractIocs } from '../src/lib/utils/extract-iocs.js';
 import { defangIoc, normalizeIoc, refang, refangValue } from '../src/lib/utils/refang.js';
 
@@ -528,6 +529,209 @@ if (extractIocs('plain words only, nothing observable here').iocs.length !== 0) 
 }
 
 globalThis.fetch = originalFetch;
+
+// --- Batch analysis (US V1.2) ---
+const batchIoc = (/** @type {string} */ typeId, /** @type {string} */ normalized) => ({
+  id: `${typeId}:${normalized}`,
+  typeId,
+  raw: normalized,
+  normalized,
+  defanged: normalized,
+  hashKind: null,
+  index: 0,
+});
+const batchCheck = (/** @type {string} */ status) => ({
+  def: {
+    id: 'check',
+    label: 'Check',
+    toolId: null,
+    run: async () => ({ status: 'ok', summary: null, fields: [], message: null }),
+  },
+  status,
+  result: null,
+  ms: null,
+});
+// An empty answer is never a failure and never a verdict: it stays Partial.
+const batchStatusCases = [
+  [[], 'No automated check available'],
+  [['pending'], 'Pending'],
+  [['running'], 'Running'],
+  [['ok', 'ok'], 'Complete'],
+  [['ok', 'empty'], 'Partial'],
+  [['ok', 'error'], 'Partial'],
+  [['empty', 'empty'], 'Partial'],
+  [['error', 'error'], 'Error'],
+  [['ok', 'cancelled'], 'Cancelled'],
+];
+for (const [statuses, expected] of batchStatusCases) {
+  const actual = computeBatchStatus(statuses.map(batchCheck));
+  if (actual !== expected) {
+    throw new Error(`Batch: statuses [${statuses}] should be "${expected}", got "${actual}".`);
+  }
+}
+
+// Concurrency: one check per IoC, so "in flight" counts IoCs (not requests).
+let inFlight = 0;
+let maxInFlight = 0;
+const singleCheckFor = (/** @type {string} */ typeId) =>
+  typeId === 'file'
+    ? []
+    : [
+        {
+          id: `${typeId}-only`,
+          label: 'Only check',
+          toolId: null,
+          run: async () => {
+            inFlight += 1;
+            maxInFlight = Math.max(maxInFlight, inFlight);
+            await new Promise((resolve) => setTimeout(resolve, 15));
+            inFlight -= 1;
+            return { status: 'ok', summary: null, fields: [], message: null };
+          },
+        },
+      ];
+const batchSnapshots = [];
+const batchRun = runBatchAnalysis(
+  ['1.1.1.1', '2.2.2.2', '3.3.3.3', '4.4.4.4', '5.5.5.5', '6.6.6.6'].map((ip) =>
+    batchIoc('ip', ip),
+  ),
+  singleCheckFor,
+  { onUpdate: (rows) => batchSnapshots.push(rows) },
+);
+await batchRun.done;
+if (maxInFlight !== 3) {
+  throw new Error(`Batch: at most 3 IoCs must be analysed concurrently, observed ${maxInFlight}.`);
+}
+const batchStatuses = batchRun.rows.map((row) => computeBatchStatus(row.checkStates));
+if (batchStatuses.join(',') !== 'Complete,Complete,Complete,Complete,Complete,Complete') {
+  throw new Error(`Batch: every analysed IoC should be Complete, got [${batchStatuses}].`);
+}
+// AC07: a settled IoC is published while the others are still pending.
+const progressive = batchSnapshots.some(
+  (rows) =>
+    rows.some((row) => computeBatchStatus(row.checkStates) === 'Complete') &&
+    rows.some((row) => computeBatchStatus(row.checkStates) !== 'Complete'),
+);
+if (!progressive) {
+  throw new Error('Batch: results must be published progressively (AC07).');
+}
+
+// AC12: a duplicated indicator runs once per batch.
+const dedupRun = runBatchAnalysis(
+  [batchIoc('ip', '1.1.1.1'), batchIoc('ip', '1.1.1.1')],
+  singleCheckFor,
+);
+await dedupRun.done;
+if (dedupRun.rows.length !== 1) {
+  throw new Error(`Batch: a duplicated IoC must run once, got ${dedupRun.rows.length} rows.`);
+}
+
+// AC05/AC06/AC10/AC11: a failing provider degrades its own check only, and a
+// hash reports "No automated check available" instead of any verdict.
+const mixedRun = runBatchAnalysis(
+  [batchIoc('domain', 'a.example'), batchIoc('file', 'f'.repeat(64))],
+  (typeId) =>
+    typeId === 'file'
+      ? []
+      : [
+          {
+            id: `${typeId}-rdap`,
+            label: 'RDAP',
+            toolId: null,
+            run: async () => ({
+              status: 'ok',
+              summary: 'ACME',
+              fields: [{ label: 'Network', value: 'ACME' }],
+              message: null,
+            }),
+          },
+          {
+            id: `${typeId}-certs`,
+            label: 'TLS',
+            toolId: null,
+            run: async () => {
+              throw new Error('HTTP 403 — blocked by the provider');
+            },
+          },
+        ],
+);
+await mixedRun.done;
+const mixedDomain = mixedRun.rows[0];
+const mixedHash = mixedRun.rows[1];
+if (computeBatchStatus(mixedDomain.checkStates) !== 'Partial') {
+  throw new Error(
+    `Batch: a failing provider must leave its IoC Partial, got ${computeBatchStatus(mixedDomain.checkStates)}.`,
+  );
+}
+if (
+  mixedDomain.checkStates[1].status !== 'error' ||
+  !String(mixedDomain.checkStates[1].result?.message).includes('403')
+) {
+  throw new Error('Batch: the provider message must be surfaced verbatim, never turned into a verdict.');
+}
+if (
+  mixedHash.checkStates.length !== 0 ||
+  computeBatchStatus(mixedHash.checkStates) !== 'No automated check available'
+) {
+  throw new Error('Batch: hashes have no automated check (AC10).');
+}
+
+// AC09: stopping keeps what already settled and cancels what never started.
+/** @type {Map<string, (result: any) => void>} */
+const manualResolvers = new Map();
+const manualChecks = () => [
+  {
+    id: 'manual',
+    label: 'Manual',
+    toolId: null,
+    run: (value) =>
+      new Promise((resolve) => manualResolvers.set(value, resolve)),
+  },
+];
+const tick = () => new Promise((resolve) => setTimeout(resolve, 0));
+const stoppedRun = runBatchAnalysis(
+  ['1.1.1.1', '2.2.2.2', '3.3.3.3', '4.4.4.4', '5.5.5.5'].map((ip) => batchIoc('ip', ip)),
+  manualChecks,
+);
+await tick(); // the first three IoCs are in flight, the last two are queued
+stoppedRun.stop();
+if (computeBatchStatus(stoppedRun.rows[3].checkStates) !== 'Cancelled') {
+  throw new Error('Batch: queued IoCs must flip to Cancelled as soon as the analysis stops.');
+}
+for (const ip of ['1.1.1.1', '2.2.2.2', '3.3.3.3']) {
+  manualResolvers.get(ip)?.({ status: 'ok', summary: null, fields: [], message: null });
+}
+await stoppedRun.done;
+const stoppedStatuses = stoppedRun.rows.map((row) => computeBatchStatus(row.checkStates));
+if (stoppedStatuses.join(',') !== 'Complete,Complete,Complete,Cancelled,Cancelled') {
+  throw new Error(
+    `Batch: stop must keep the results already obtained and cancel the rest, got [${stoppedStatuses}].`,
+  );
+}
+
+// A check cut short by the stop is a cancellation, never a provider error.
+const abortAwareRun = runBatchAnalysis(
+  [batchIoc('ip', '9.9.9.9')],
+  () => [
+    {
+      id: 'abort-aware',
+      label: 'Abort aware',
+      toolId: null,
+      run: (value, options = {}) =>
+        new Promise((resolve, reject) => {
+          options.signal?.addEventListener('abort', () =>
+            reject(new Error('This operation was aborted')),
+          );
+        }),
+    },
+  ],
+);
+await tick();
+abortAwareRun.stop();
+await abortAwareRun.done;
+if (computeBatchStatus(abortAwareRun.rows[0].checkStates) !== 'Cancelled') {
+  throw new Error('Batch: an aborted check must read Cancelled, not an error/verdict (AC11).');
+}
 
 console.log(`SMOKE OK — ${loaded.tools.length} tools / ${loaded.categories.length} categories`);
 console.log(`ids: ${ids.join(', ')}`);
