@@ -300,6 +300,7 @@
     font-size: var(--font-size-hero);
     line-height: var(--line-height-heading);
     letter-spacing: var(--letter-spacing-tighter);
+    color: var(--color-hero-title);
   }
 
   .hero__subtitle {

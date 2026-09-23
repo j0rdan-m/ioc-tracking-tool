@@ -61,6 +61,6 @@
     text-align: center;
     color: var(--color-text-muted);
     border: var(--border-width) dashed var(--color-border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
   }
 </style>

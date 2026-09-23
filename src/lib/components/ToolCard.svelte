@@ -117,7 +117,7 @@
     padding: var(--space-5);
     background: linear-gradient(180deg, var(--color-surface-raised), var(--color-surface));
     border: var(--border-width) solid var(--color-border);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-card);
     box-shadow: var(--shadow-card);
     transition: var(--transition-lift);
   }

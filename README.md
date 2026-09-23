@@ -216,7 +216,7 @@ The file is organised in seven sets:
 | 1. Palette | `--palette-navy-950`, `--palette-sky-400` | Raw colours, meaningless on their own |
 | 2. Semantic colours | `--color-bg`, `--color-text`, `--color-accent`, `--color-border` | Which role each colour plays; the translucent soft/veil variants are derived with `color-mix()` |
 | 3. Typography | `--font-body`, `--font-mono`, `--font-size-*`, `--line-height-*`, `--letter-spacing-*` | Fonts and the type ladder |
-| 4. Shape | `--radius-xs` … `--radius-lg`, `--radius-pill`, `--radius-circle` | One edit re-shapes every card, dialog, input and chip |
+| 4. Shape | `--radius-xs` … `--radius-card`, `--radius-lg`, `--radius-pill`, `--radius-circle` | One edit re-shapes every card, dialog, input and chip |
 | 5. Elevation | `--shadow-card`, `--shadow-focus`, `--shadow-glow-*` | Depth, focus rings and glows |
 | 6. Layout | `--space-1` … `--space-10`, `--app-max-width`, `--modal-width-*`, `--z-*` | Spacing ladder, page width, dialog widths, stacking |
 | 7. Motion | `--duration-*`, `--ease-*`, `--transition-colors/lift/field/width/tap` | Durations and the composed transitions |
