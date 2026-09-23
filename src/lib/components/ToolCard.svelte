@@ -112,48 +112,46 @@
   .card {
     display: flex;
     flex-direction: column;
-    gap: 0.7rem;
+    gap: var(--space-3);
     flex: 1;
-    padding: 1.2rem 1.25rem;
+    padding: var(--space-5);
     background: linear-gradient(180deg, var(--color-surface-raised), var(--color-surface));
-    border: 1px solid var(--color-border);
+    border: var(--border-width) solid var(--color-border);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-card);
-    transition:
-      transform 0.18s ease,
-      border-color 0.18s ease;
+    transition: var(--transition-lift);
   }
 
   .card:hover {
-    transform: translateY(-3px);
-    border-color: hsl(var(--category-hue) 70% 55% / 0.6);
+    transform: translateY(var(--card-lift));
+    border-color: hsl(var(--category-hue) var(--category-saturation-soft) var(--category-lightness-soft) / 0.6);
   }
 
   .card__category {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
+    gap: var(--space-2);
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-wider);
     text-transform: uppercase;
     color: var(--color-text-muted);
   }
 
   .card__category::before {
     content: '';
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 999px;
-    background: hsl(var(--category-hue) 80% 60%);
-    box-shadow: 0 0 8px hsl(var(--category-hue) 80% 60% / 0.8);
+    width: var(--status-dot-size);
+    height: var(--status-dot-size);
+    border-radius: var(--radius-circle);
+    background: hsl(var(--category-hue) var(--category-saturation) var(--category-lightness));
+    box-shadow: var(--shadow-glow-category);
   }
 
   .card__head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
   .card__favorite {
@@ -162,18 +160,14 @@
     justify-content: center;
     width: 1.9rem;
     height: 1.9rem;
-    font-size: 1rem;
-    line-height: 1;
+    font-size: var(--font-size-md);
+    line-height: var(--line-height-solid);
     color: var(--color-text-muted);
     background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-pill);
     cursor: pointer;
-    transition:
-      color 0.15s ease,
-      border-color 0.15s ease,
-      background-color 0.15s ease,
-      transform 0.15s ease;
+    transition: var(--transition-tap);
   }
 
   .card__favorite:hover {
@@ -184,108 +178,108 @@
 
   .card__favorite--active {
     color: var(--color-accent);
-    background: rgb(56 189 248 / 0.14);
+    background: var(--color-accent-soft);
     border-color: var(--color-accent);
   }
 
   .card__ioc {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.35rem;
-    margin: -0.35rem 0 0;
+    gap: var(--space-1);
+    margin: calc(-1 * var(--space-1)) 0 0;
     padding: 0;
     list-style: none;
   }
 
   .card__ioc-type {
-    padding: 0.08rem 0.5rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    color: hsl(var(--category-hue) 70% 72%);
-    background: hsl(var(--category-hue) 70% 55% / 0.12);
-    border: 1px solid hsl(var(--category-hue) 70% 55% / 0.3);
-    border-radius: 999px;
+    padding: var(--pill-padding-y) var(--space-2);
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-snug);
+    color: hsl(var(--category-hue) var(--category-saturation-soft) var(--category-lightness-text));
+    background: hsl(var(--category-hue) var(--category-saturation-soft) var(--category-lightness-soft) / 0.12);
+    border: var(--border-width) solid hsl(var(--category-hue) var(--category-saturation-soft) var(--category-lightness-soft) / 0.3);
+    border-radius: var(--radius-pill);
   }
 
   .card__name {
     margin: 0;
-    font-size: 1.18rem;
-    letter-spacing: -0.01em;
+    font-size: var(--font-size-lg);
+    letter-spacing: var(--letter-spacing-tight);
   }
 
   .card__description {
     flex: 1;
     margin: 0;
-    font-size: 0.93rem;
+    font-size: var(--font-size-base);
     color: var(--color-text-muted);
   }
 
   .card__tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.35rem;
+    gap: var(--space-1);
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
   .card__tag {
-    padding: 0.08rem 0.5rem;
+    padding: var(--pill-padding-y) var(--space-2);
     font-family: var(--font-mono);
-    font-size: 0.7rem;
+    font-size: var(--font-size-2xs);
     color: var(--color-text-muted);
-    background: rgb(148 163 184 / 0.1);
-    border: 1px solid rgb(148 163 184 / 0.16);
-    border-radius: 999px;
+    background: var(--color-neutral-faint);
+    border: var(--border-width) solid var(--color-neutral-border);
+    border-radius: var(--radius-pill);
   }
 
   .card__actions {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
-    margin-top: 0.25rem;
-    padding-top: 0.85rem;
-    border-top: 1px solid var(--color-border);
+    gap: var(--space-3);
+    margin-top: var(--space-1);
+    padding-top: var(--space-3);
+    border-top: var(--border-width) solid var(--color-border);
   }
 
   .card__actions-left {
     display: inline-flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: var(--space-3);
     min-width: 0;
   }
 
   .card__health {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    font-size: 0.8rem;
+    gap: var(--space-1);
+    font-size: var(--font-size-xs);
     color: var(--color-text-muted);
     cursor: help;
   }
 
   .card__health-dot {
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 999px;
-    background: rgb(148 163 184 / 0.7);
+    width: var(--status-dot-size);
+    height: var(--status-dot-size);
+    border-radius: var(--radius-circle);
+    background: var(--color-neutral-marker);
   }
 
   .card__health--up .card__health-dot {
     background: var(--color-success);
-    box-shadow: 0 0 6px rgb(74 222 128 / 0.8);
+    box-shadow: var(--shadow-glow-success);
   }
 
   .card__health--down .card__health-dot {
     background: var(--color-danger);
-    box-shadow: 0 0 6px rgb(248 113 113 / 0.8);
+    box-shadow: var(--shadow-glow-danger);
   }
 
   .card__open {
-    font-weight: 600;
-    font-size: 0.9rem;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-base);
     color: var(--color-accent);
     text-decoration: none;
   }
@@ -295,17 +289,15 @@
   }
 
   .card__copy {
-    padding: 0.32rem 0.8rem;
+    padding: var(--space-1) var(--space-3);
     font: inherit;
-    font-size: 0.8rem;
+    font-size: var(--font-size-xs);
     color: var(--color-text-muted);
     background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-pill);
     cursor: pointer;
-    transition:
-      color 0.15s ease,
-      border-color 0.15s ease;
+    transition: var(--transition-colors);
   }
 
   .card__copy:hover {
@@ -315,11 +307,11 @@
 
   .card__copy--copied {
     color: var(--color-success);
-    border-color: rgb(74 222 128 / 0.5);
+    border-color: var(--color-success-border);
   }
 
   .card__copy--failed {
     color: var(--color-danger);
-    border-color: rgb(248 113 113 / 0.5);
+    border-color: var(--color-danger-border);
   }
 </style>

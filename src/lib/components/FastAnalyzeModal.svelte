@@ -332,186 +332,37 @@
 {/if}
 
 <style>
-  .modal__backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    display: flex;
-    padding: 2rem 1rem;
-    overflow-y: auto;
-    background: rgb(2 8 23 / 0.72);
-    backdrop-filter: blur(4px);
-  }
-
-  /* Invisible button covering the backdrop so clicking outside the dialog
-     is a real, keyboard-reachable close action. */
-  .modal__backdrop-button {
-    position: absolute;
-    inset: 0;
-    background: transparent;
-    border: none;
-    cursor: default;
-  }
-
-  .modal {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-    width: min(40rem, 100%);
-    margin: auto;
-    padding: 1.5rem;
-    background: var(--color-surface-raised);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-  }
-
-  .modal__head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .modal__eyebrow {
-    margin: 0 0 0.15rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--color-accent);
-  }
-
-  .modal__title {
-    margin: 0;
-    font-size: 1.25rem;
-    letter-spacing: -0.01em;
-  }
-
-  .modal__close {
-    padding: 0.25rem 0.6rem;
-    font: inherit;
-    font-size: 0.9rem;
-    color: var(--color-text-muted);
-    background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    cursor: pointer;
-    transition:
-      color 0.15s ease,
-      border-color 0.15s ease;
-  }
-
-  .modal__close:hover {
-    color: var(--color-text);
-    border-color: var(--color-accent);
-  }
-
-  .modal__hint {
-    margin: 0;
-    font-size: 0.88rem;
-    color: var(--color-text-muted);
-  }
-
-  .modal__form {
-    display: flex;
-    gap: 0.6rem;
-  }
-
-  .modal__input {
-    flex: 1;
-    min-width: 0;
-    padding: 0.55rem 1rem;
-    font: inherit;
-    font-family: var(--font-mono);
-    font-size: 0.92rem;
-    color: var(--color-text);
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
-    transition:
-      border-color 0.15s ease,
-      box-shadow 0.15s ease;
-  }
-
-  .modal__input::placeholder {
-    font-family: var(--font-body);
-    color: var(--color-text-muted);
-  }
-
-  .modal__input:focus {
-    outline: none;
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgb(56 189 248 / 0.18);
-  }
-
-  .modal__start {
-    padding: 0.55rem 1.4rem;
-    font: inherit;
-    font-weight: 600;
-    color: #08131f;
-    background: var(--color-accent);
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: background-color 0.15s ease;
-  }
-
-  .modal__start:hover:not(:disabled) {
-    background: var(--color-accent-strong);
-  }
-
-  .modal__start:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-
-  .modal__detect,
-  .modal__notice {
-    margin: 0;
-    font-size: 0.85rem;
-    color: var(--color-text-muted);
-  }
-
-  .modal__detect--warn,
-  .modal__notice {
-    color: var(--color-text);
-  }
-
-  .modal__detect--warn {
-    color: rgb(250 204 21);
-  }
+  /* Dialog chrome (backdrop, box, header, buttons, footer) is shared by every
+     modal: see src/styles/components.css. Only the content below is local. */
 
   .checks {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: var(--space-2);
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
   .check {
-    padding: 0.75rem 0.9rem;
+    padding: var(--space-3) var(--space-4);
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
   }
 
   .check__head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
   .check__dot {
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 999px;
-    background: rgb(148 163 184 / 0.7);
+    width: var(--status-dot-size);
+    height: var(--status-dot-size);
+    border-radius: var(--radius-circle);
+    background: var(--color-neutral-marker);
   }
 
   .check__dot--pending {
@@ -520,7 +371,7 @@
 
   .check__dot--ok {
     background: var(--color-success);
-    box-shadow: 0 0 6px rgb(74 222 128 / 0.8);
+    box-shadow: var(--shadow-glow-success);
   }
 
   .check__dot--empty {
@@ -529,13 +380,13 @@
 
   .check__dot--error {
     background: var(--color-danger);
-    box-shadow: 0 0 6px rgb(248 113 113 / 0.8);
+    box-shadow: var(--shadow-glow-danger);
   }
 
   @keyframes check-pulse {
     0%,
     100% {
-      opacity: 0.35;
+      opacity: var(--opacity-pulse-min);
     }
     50% {
       opacity: 1;
@@ -543,20 +394,20 @@
   }
 
   .check__label {
-    font-weight: 600;
-    font-size: 0.92rem;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-base);
   }
 
   .check__ms {
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: var(--font-size-2xs);
     color: var(--color-text-muted);
   }
 
   .check__open {
     margin-left: auto;
-    font-size: 0.8rem;
-    font-weight: 600;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
     color: var(--color-accent);
     text-decoration: none;
   }
@@ -566,44 +417,44 @@
   }
 
   .check__pending {
-    margin: 0.35rem 0 0;
-    font-size: 0.85rem;
+    margin: var(--space-1) 0 0;
+    font-size: var(--font-size-sm);
     color: var(--color-text-muted);
   }
 
   .check__summary {
-    margin: 0.35rem 0 0;
-    font-size: 0.88rem;
+    margin: var(--space-1) 0 0;
+    font-size: var(--font-size-sm);
   }
 
   .check__fields {
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
-    margin: 0.5rem 0 0;
+    gap: var(--space-1);
+    margin: var(--space-2) 0 0;
   }
 
   .check__field {
     display: flex;
-    gap: 0.75rem;
+    gap: var(--space-3);
   }
 
   .check__field dt {
     flex: 0 0 8.5rem;
-    font-size: 0.78rem;
+    font-size: var(--font-size-xs);
     color: var(--color-text-muted);
   }
 
   .check__value {
     margin: 0;
     font-family: var(--font-mono);
-    font-size: 0.8rem;
+    font-size: var(--font-size-xs);
     white-space: pre-line;
     word-break: break-word;
   }
 
   .check__value--warn {
-    color: rgb(250 204 21);
+    color: var(--color-warning);
   }
 
   .check__value--bad {
@@ -611,8 +462,8 @@
   }
 
   .check__message {
-    margin: 0.4rem 0 0;
-    font-size: 0.82rem;
+    margin: var(--space-2) 0 0;
+    font-size: var(--font-size-xs);
     color: var(--color-text-muted);
   }
 
@@ -621,10 +472,10 @@
   }
 
   .gofurther__title {
-    margin: 0.25rem 0 0;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
+    margin: var(--space-1) 0 0;
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-wide);
     text-transform: uppercase;
     color: var(--color-text-muted);
   }
@@ -632,8 +483,8 @@
   .gofurther__list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
-    gap: 0.5rem;
-    margin: 0.5rem 0 0;
+    gap: var(--space-2);
+    margin: var(--space-2) 0 0;
     padding: 0;
     list-style: none;
   }
@@ -641,14 +492,14 @@
   .gofurther__link {
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
+    gap: 0;
     height: 100%;
-    padding: 0.55rem 0.75rem;
+    padding: var(--space-2) var(--space-3);
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
     text-decoration: none;
-    transition: border-color 0.15s ease;
+    transition: var(--transition-field);
   }
 
   .gofurther__link:hover {
@@ -656,19 +507,19 @@
   }
 
   .gofurther__name {
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
     color: var(--color-accent);
   }
 
   .gofurther__hint {
-    font-size: 0.75rem;
+    font-size: var(--font-size-2xs);
     color: var(--color-text-muted);
   }
 
   .modal__foot {
-    margin: 0.25rem 0 0;
-    font-size: 0.72rem;
+    margin: var(--space-1) 0 0;
+    font-size: var(--font-size-2xs);
     color: var(--color-text-muted);
   }
 </style>

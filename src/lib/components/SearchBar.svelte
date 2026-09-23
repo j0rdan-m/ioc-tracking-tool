@@ -44,15 +44,13 @@
 
   .search__input {
     width: 100%;
-    padding: 0.55rem 1rem 0.55rem 2.5rem;
+    padding: var(--space-2) var(--space-4) var(--space-2) var(--space-8);
     font: inherit;
     color: var(--color-text);
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    transition:
-      border-color 0.15s ease,
-      box-shadow 0.15s ease;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-pill);
+    transition: var(--transition-field);
   }
 
   .search__input::placeholder {
@@ -62,6 +60,6 @@
   .search__input:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgb(56 189 248 / 0.18);
+    box-shadow: var(--shadow-focus);
   }
 </style>

@@ -127,6 +127,7 @@ npm install
 npm run dev       # start the dev server (http://localhost:5173)
 npm run check     # static analysis (svelte-check + JSDoc types)
 npm run smoke     # catalog + core smoke test
+npm run theme     # theme guard: no hard-coded colour/radius/font-size in components
 npm run build     # production build into dist/
 npm run preview   # serve the production build locally
 ```
@@ -176,6 +177,11 @@ npm run preview   # serve the production build locally
 ```
 src/
   data/tools.json             # ← edit this file to add/remove tools
+  styles/
+    theme.css                 # ← edit this file to restyle the whole app (tokens only)
+    base.css                  # reset, document defaults, page backdrop
+    components.css            # shared dialog chrome (.modal, .modal__head, …)
+  app.css                     # stylesheet entry point (@imports the three files above)
   lib/
     bootstrap.js              # composition root: builds the DI container
     di/                       # tiny DI container + Svelte context bridge
@@ -193,6 +199,52 @@ src/
   App.svelte                  # page layout & state
   main.js                     # entry point: builds the container, mounts the app
 ```
+
+## Theming and styles
+
+All the look and feel lives in **`src/styles/theme.css`**: one `:root` block of CSS custom
+properties. No component hard-codes a colour, a radius, a font size, a shadow or a spacing value —
+they all consume these tokens, so changing a value there restyles every place it is used, with no
+component to touch and no build step (it is plain CSS, not SCSS). The tokens are also overridable
+at runtime (DevTools, a `@media (prefers-color-scheme: light)` block, a user setting), which is what
+makes a future light theme a purely additive change.
+
+The file is organised in seven sets:
+
+| Set | Examples | What it controls |
+| --- | --- | --- |
+| 1. Palette | `--palette-navy-950`, `--palette-sky-400` | Raw colours, meaningless on their own |
+| 2. Semantic colours | `--color-bg`, `--color-text`, `--color-accent`, `--color-border` | Which role each colour plays; the translucent soft/veil variants are derived with `color-mix()` |
+| 3. Typography | `--font-body`, `--font-mono`, `--font-size-*`, `--line-height-*`, `--letter-spacing-*` | Fonts and the type ladder |
+| 4. Shape | `--radius-xs` … `--radius-lg`, `--radius-pill`, `--radius-circle` | One edit re-shapes every card, dialog, input and chip |
+| 5. Elevation | `--shadow-card`, `--shadow-focus`, `--shadow-glow-*` | Depth, focus rings and glows |
+| 6. Layout | `--space-1` … `--space-10`, `--app-max-width`, `--modal-width-*`, `--z-*` | Spacing ladder, page width, dialog widths, stacking |
+| 7. Motion | `--duration-*`, `--ease-*`, `--transition-colors/lift/field/width/tap` | Durations and the composed transitions |
+
+Typical edits:
+
+```css
+/* A warmer accent: chips, focus rings and glows follow automatically. */
+--color-accent: var(--palette-amber-400);
+
+/* Squarer UI: pills become 8px rounded rectangles. */
+--radius-pill: var(--radius-sm);
+
+/* Denser typography. */
+--font-size-base: 0.9rem;
+--font-size-sm: 0.8rem;
+```
+
+`--category-hue` is set per tool card (`ToolCard.svelte`) and used with the
+`--category-saturation*` / `--category-lightness*` tokens, so the category colour coding is a token
+scale too. The two other stylesheets — `base.css` (reset and document defaults) and
+`components.css` (the dialog chrome shared by the four modals) — are structural: they exist so the
+shared shell is declared once instead of being copy-pasted into every modal.
+
+The contract is enforced by **`npm run theme`** (`scripts/check-theme.mjs`): every `var(--token)`
+used under `src/` must be declared in `theme.css`, and components must not hard-code a colour,
+radius, font size or shadow. A stray `#38bdf8` or `border-radius: 10px` in a component fails the
+check with the offending file and line. Run it alongside `npm run check` / `npm run smoke`.
 
 ## Adding a tool
 

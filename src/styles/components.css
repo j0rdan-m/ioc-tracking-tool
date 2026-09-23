@@ -1,0 +1,218 @@
+/* ============================================================================
+ * SHARED COMPONENT CHROME — global styles reused by every dialog.
+ *
+ * These classes used to be copy-pasted into each modal component (Svelte scopes
+ * `<style>` per component, so a shared class had to be re-declared each time).
+ * They live here once: a dialog gets the whole shell for free and only declares
+ * its own content styles. Sizes come from `theme.css`.
+ *
+ * Sizing: `.modal` (40rem) / `.modal--md` (52rem) / `.modal--lg` (58rem).
+ * Every value comes from `theme.css`, so dialogs restyle with the theme.
+ * ========================================================================== */
+
+.modal__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  padding: var(--modal-backdrop-padding);
+  overflow-y: auto;
+  background: var(--color-overlay);
+  backdrop-filter: var(--blur-backdrop);
+}
+
+/* Invisible button covering the backdrop so clicking outside the dialog is a
+   real, keyboard-reachable close action. */
+.modal__backdrop-button {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+  border: none;
+  cursor: default;
+}
+
+.modal {
+  position: relative;
+  z-index: var(--z-modal-content);
+  display: flex;
+  flex-direction: column;
+  gap: var(--modal-gap);
+  width: min(var(--modal-width), 100%);
+  margin: auto;
+  padding: var(--modal-padding);
+  background: var(--color-surface-raised);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.modal--md {
+  --modal-width: var(--modal-width-md);
+}
+
+.modal--lg {
+  --modal-width: var(--modal-width-lg);
+}
+
+.modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.modal__eyebrow {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.modal__title {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+.modal__close {
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+  font-size: var(--font-size-base);
+  color: var(--color-text-muted);
+  background: transparent;
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+
+.modal__close:hover {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+.modal__hint {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.modal__count,
+.modal__notice {
+  margin: 0;
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+}
+
+.modal__detect {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.modal__detect--warn {
+  color: var(--color-warning);
+}
+
+.modal__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.modal__input,
+.modal__textarea {
+  min-width: 0;
+  padding: var(--space-2) var(--space-4);
+  font: inherit;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-base);
+  color: var(--color-text);
+  background: var(--color-surface);
+  border: var(--border-width) solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: var(--transition-field);
+}
+
+.modal__input {
+  flex: 1;
+}
+
+.modal__textarea {
+  flex: 1 1 100%;
+  padding: var(--space-3) var(--space-4);
+  line-height: var(--line-height-tight);
+  resize: vertical;
+}
+
+.modal__input::placeholder {
+  font-family: var(--font-body);
+  color: var(--color-text-muted);
+}
+
+.modal__textarea::placeholder {
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+}
+
+.modal__input:focus,
+.modal__textarea:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow: var(--shadow-focus);
+}
+
+.modal__form-actions {
+  display: flex;
+  flex: 1 1 100%;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.modal__start,
+.modal__clear {
+  padding: var(--space-2) var(--space-6);
+  font: inherit;
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: var(--transition-colors);
+}
+
+.modal__start {
+  color: var(--color-accent-contrast);
+  background: var(--color-accent);
+  border: none;
+}
+
+.modal__start:hover:not(:disabled) {
+  background: var(--color-accent-strong);
+}
+
+.modal__clear {
+  color: var(--color-text-muted);
+  background: transparent;
+  border: var(--border-width) solid var(--color-border);
+}
+
+.modal__clear:hover:not(:disabled) {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+
+.modal__start:disabled,
+.modal__clear:disabled {
+  opacity: var(--opacity-disabled);
+  cursor: not-allowed;
+}
+
+.modal__foot {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin: 0;
+  font-size: var(--font-size-2xs);
+  color: var(--color-text-muted);
+}

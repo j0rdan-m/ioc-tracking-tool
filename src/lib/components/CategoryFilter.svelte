@@ -35,26 +35,23 @@
   .filters {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
   .filter {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    padding: 0.4rem 0.85rem;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
     font: inherit;
-    font-size: 0.86rem;
-    font-weight: 500;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
     color: var(--color-text-muted);
     background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-pill);
     cursor: pointer;
-    transition:
-      color 0.15s ease,
-      border-color 0.15s ease,
-      background-color 0.15s ease;
+    transition: var(--transition-colors);
   }
 
   .filter:hover {
@@ -64,21 +61,21 @@
 
   .filter--active {
     color: var(--color-accent);
-    background: rgb(56 189 248 / 0.12);
+    background: var(--color-accent-soft);
     border-color: var(--color-accent);
   }
 
   .filter__count {
-    padding: 0.05rem 0.45rem;
+    padding: var(--pill-padding-y) var(--space-2);
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: var(--font-size-2xs);
     color: var(--color-text-muted);
-    background: rgb(148 163 184 / 0.12);
-    border-radius: 999px;
+    background: var(--color-neutral-soft);
+    border-radius: var(--radius-pill);
   }
 
   .filter--active .filter__count {
     color: var(--color-accent);
-    background: rgb(56 189 248 / 0.16);
+    background: var(--color-accent-soft-strong);
   }
 </style>

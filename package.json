@@ -10,7 +10,8 @@
     "check": "svelte-check --tsconfig ./jsconfig.json",
     "health": "node scripts/health-check.mjs",
     "preview": "vite preview",
-    "smoke": "node scripts/smoke-test.mjs"
+    "smoke": "node scripts/smoke-test.mjs",
+    "theme": "node scripts/check-theme.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.3",

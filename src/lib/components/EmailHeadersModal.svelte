@@ -294,159 +294,75 @@
 </script>
 
 <style>
-  .eh__tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--color-border); }
-  .eh__tab { padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 600; color: var(--color-text-muted); background: transparent; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: color .15s, border-color .15s; }
+  .eh__tabs { display: flex; gap: var(--space-1); border-bottom: var(--border-width) solid var(--color-border); }
+  .eh__tab { padding: var(--space-2) var(--space-4); font-size: var(--font-size-sm); font-weight: var(--font-weight-semibold); color: var(--color-text-muted); background: transparent; border: none; border-bottom: var(--border-width-strong) solid transparent; cursor: pointer; transition: var(--transition-colors); }
   .eh__tab--active { color: var(--color-text); border-color: var(--color-accent); }
-  .eh__summary { display: grid; gap: 1rem; }
-  .eh__row { display: flex; gap: 0.5rem; align-items: center; }
-  .eh__row > dt { font-size: 0.78rem; color: var(--color-text-muted); min-width: 130px; }
-  .eh__row > dd { margin: 0; font-family: var(--font-mono); font-size: 0.88rem; word-break: break-all; }
-  .eh__path { display: grid; gap: 0.75rem; }
-  .eh__hop { padding: 0.6rem; background: var(--color-surface-raised); border: 1px solid var(--color-border); border-radius: 8px; }
-  .eh__hop-num { font-size: 0.72rem; color: var(--color-text-muted); margin-bottom: 0.25rem; }
-  .eh__hop-name { font-weight: 600; font-size: 0.88rem; color: var(--color-text); word-break: break-all; }
-  .eh__hop-ip { font-family: var(--font-mono); font-size: 0.82rem; color: var(--color-text-muted); }
-  .eh__hop--private { opacity: 0.6; }
+  .eh__summary { display: grid; gap: var(--space-4); }
+  .eh__row { display: flex; gap: var(--space-2); align-items: center; }
+  .eh__row > dt { font-size: var(--font-size-xs); color: var(--color-text-muted); min-width: 130px; }
+  .eh__row > dd { margin: 0; font-family: var(--font-mono); font-size: var(--font-size-sm); word-break: break-all; }
+  .eh__path { display: grid; gap: var(--space-3); }
+  .eh__hop { padding: var(--space-2); background: var(--color-surface-raised); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-sm); }
+  .eh__hop-num { font-size: var(--font-size-2xs); color: var(--color-text-muted); margin-bottom: var(--space-1); }
+  .eh__hop-name { font-weight: var(--font-weight-semibold); font-size: var(--font-size-sm); color: var(--color-text); word-break: break-all; }
+  .eh__hop-ip { font-family: var(--font-mono); font-size: var(--font-size-xs); color: var(--color-text-muted); }
+  .eh__hop--private { opacity: var(--opacity-dim); }
   .eh__hop--private .eh__hop-ip { color: var(--color-warning); }
-  .eh__hop-date { font-size: 0.74rem; color: var(--color-text-muted); }
-  .eh__signals { display: flex; flex-direction: column; gap: 0.4rem; }
-  .eh__signal { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+  .eh__hop-date { font-size: var(--font-size-2xs); color: var(--color-text-muted); }
+  .eh__signals { display: flex; flex-direction: column; gap: var(--space-2); }
+  .eh__signal { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-sm); }
   .eh__signal--ok { color: var(--color-success); }
   .eh__signal--warn { color: var(--color-warning); }
   .eh__signal--info { color: var(--color-accent); }
-  .eh__ioc-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.6rem; border-bottom: 1px solid var(--color-border); }
+  .eh__ioc-row { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); border-bottom: var(--border-width) solid var(--color-border); }
   .eh__ioc-row:last-child { border-bottom: none; }
-  .eh__ioc-type { font-size: 0.75rem; font-weight: 600; padding: 0.1rem 0.5rem; border-radius: 4px; color: var(--color-text-muted); background: var(--color-surface-raised); white-space: nowrap; }
-  .eh__ioc-value { font-family: var(--font-mono); font-size: 0.86rem; word-break: break-all; }
-  .eh__actions { display: flex; gap: 0.35rem; margin-left: auto; }
-  .eh__btn { padding: 0.25rem 0.8rem; font: inherit; font-size: 0.8rem; border: 1px solid var(--color-border); border-radius: 999px; background: transparent; cursor: pointer; }
+  .eh__ioc-type { font-size: var(--font-size-2xs); font-weight: var(--font-weight-semibold); padding: var(--pill-padding-y) var(--space-2); border-radius: var(--radius-xs); color: var(--color-text-muted); background: var(--color-surface-raised); white-space: nowrap; }
+  .eh__ioc-value { font-family: var(--font-mono); font-size: var(--font-size-sm); word-break: break-all; }
+  .eh__actions { display: flex; gap: var(--space-1); margin-left: auto; }
+  .eh__btn { padding: var(--space-1) var(--space-3); font: inherit; font-size: var(--font-size-xs); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-pill); background: transparent; cursor: pointer; }
   .eh__btn--copy { color: var(--color-text-muted); }
   .eh__btn--copy:hover { color: var(--color-text); }
-  .eh__btn--primary { color: var(--color-text); background: var(--color-accent); }
+  .eh__btn--primary { color: var(--color-accent-contrast); background: var(--color-accent); }
   .eh__btn--primary:hover { background: var(--color-accent-strong); }
-  .eh__raw { font-family: var(--font-mono); font-size: 0.82rem; white-space: pre-wrap; word-break: break-all; padding: 0.8rem; background: var(--color-surface-raised); border: 1px solid var(--color-border); border-radius: 8px; margin: 0; max-height: 500px; overflow: auto; }
-  .eh__feedback { font-size: 0.8rem; color: var(--color-success); font-weight: 600; }
-  .eh__empty { padding: 2.5rem 1rem; text-align: center; }
-  .eh__empty p { margin: 0 0 0.5rem; color: var(--color-text-muted); font-size: 0.9rem; }
-  .eh__hint { font-size: 0.8rem; color: var(--color-text-muted); margin: 0; }
-  .eh__sub { font-size: 0.76rem; color: var(--color-text-muted); }
+  .eh__raw { font-family: var(--font-mono); font-size: var(--font-size-xs); white-space: pre-wrap; word-break: break-all; padding: var(--space-3); background: var(--color-surface-raised); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-sm); margin: 0; max-height: 500px; overflow: auto; }
+  .eh__feedback { font-size: var(--font-size-xs); color: var(--color-success); font-weight: var(--font-weight-semibold); }
+  .eh__empty { padding: var(--space-8) var(--space-4); text-align: center; }
+  .eh__empty p { margin: 0 0 var(--space-2); color: var(--color-text-muted); font-size: var(--font-size-base); }
+  .eh__hint { font-size: var(--font-size-xs); color: var(--color-text-muted); margin: 0; }
+  .eh__sub { font-size: var(--font-size-2xs); color: var(--color-text-muted); }
   .eh__code { font-family: var(--font-mono); }
-  .eh__tag { font-size: 0.72rem; color: var(--color-warning); background: rgb(250 204 21 / 0.12); padding: 0.05rem 0.4rem; border-radius: 999px; }
-  .eh__selbar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
-  .eh__count { font-size: 0.82rem; color: var(--color-text-muted); }
-    .eh__arrow { text-align: center; color: var(--color-text-muted); font-size: 1.1rem; }
+  .eh__tag { font-size: var(--font-size-2xs); color: var(--color-warning); background: var(--color-warning-soft); padding: var(--pill-padding-y) var(--space-2); border-radius: var(--radius-pill); }
+  .eh__selbar { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-2); }
+  .eh__count { font-size: var(--font-size-xs); color: var(--color-text-muted); }
+  .eh__arrow { text-align: center; color: var(--color-text-muted); font-size: var(--font-size-lg); }
 
-  /* Dialog structure (scoped: each modal styles its own copy). */
-  .modal__backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    display: flex;
-    padding: 2rem 1rem;
-    overflow-y: auto;
-    background: rgb(2 8 23 / 0.72);
-    backdrop-filter: blur(4px);
-  }
-
-  /* Invisible button covering the backdrop so clicking outside the dialog
-     is a real, keyboard-reachable close action. */
-  .modal__backdrop-button {
-    position: absolute;
-    inset: 0;
-    background: transparent;
-    border: none;
-    cursor: default;
-  }
-
-  .modal {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-    width: min(58rem, 100%);
-    margin: auto;
-    padding: 1.5rem;
-    background: var(--color-surface-raised);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-  }
-
-  .modal__head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .modal__eyebrow {
-    margin: 0 0 0.15rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--color-accent);
-  }
-
-  .modal__title {
-    margin: 0;
-    font-size: 1.25rem;
-    letter-spacing: -0.01em;
-  }
-
-  .modal__close {
-    padding: 0.25rem 0.6rem;
-    font: inherit;
-    font-size: 0.9rem;
-    color: var(--color-text-muted);
-    background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    cursor: pointer;
-    transition:
-      color 0.15s ease,
-      border-color 0.15s ease;
-  }
-
-  .modal__close:hover {
-    color: var(--color-text);
-    border-color: var(--color-accent);
-  }
-
-  .modal__foot {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin: 0;
-    font-size: 0.72rem;
-    color: var(--color-text-muted);
-  }
+  /* Dialog chrome (backdrop, box, header, buttons, footer) is shared by every
+     modal: see src/styles/components.css. Only the content below is local. */
 
   /* Input zone above the tabs. */
   .eh__input {
     display: grid;
-    gap: 0.6rem;
+    gap: var(--space-2);
   }
 
   .eh__input-actions {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
   .eh__textarea {
     width: 100%;
     min-height: 10rem;
-    padding: 0.65rem 0.9rem;
+    padding: var(--space-3) var(--space-4);
     font: inherit;
     font-family: var(--font-mono);
-    font-size: 0.85rem;
-    line-height: 1.5;
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-tight);
     color: var(--color-text);
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
     resize: vertical;
   }
 
@@ -458,39 +374,39 @@
   .eh__textarea:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgb(56 189 248 / 0.18);
+    box-shadow: var(--shadow-focus);
   }
 
   .eh__ioCs {
     display: grid;
-    gap: 0.6rem;
+    gap: var(--space-2);
   }
 
   .eh__ioc-list {
     list-style: none;
     margin: 0;
     padding: 0;
-    border: 1px solid var(--color-border);
-    border-radius: 8px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-sm);
   }
 
   /* Batch analysis (shared look with the Extract IoCs modal). */
   .batch {
     display: grid;
-    gap: 0.6rem;
-    padding-top: 0.75rem;
-    border-top: 1px solid var(--color-border);
+    gap: var(--space-2);
+    padding-top: var(--space-3);
+    border-top: var(--border-width) solid var(--color-border);
   }
 
   .batch__head {
     display: flex;
     justify-content: space-between;
-    gap: 1rem;
-    font-size: 0.82rem;
+    gap: var(--space-4);
+    font-size: var(--font-size-xs);
   }
 
   .batch__progress {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--color-text);
   }
 
@@ -499,41 +415,40 @@
   }
 
   .batch__gauge {
-    height: 6px;
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
+    height: var(--gauge-height);
     overflow: hidden;
+    background: var(--color-neutral-track);
+    border-radius: var(--radius-pill);
   }
 
   .batch__gauge-fill {
     display: block;
     height: 100%;
     background: var(--color-accent);
-    transition: width 0.2s ease;
+    transition: var(--transition-width);
   }
 
   .batch__table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.84rem;
+    font-size: var(--font-size-xs);
   }
 
   .batch__table th {
-    padding: 0.35rem 0.5rem;
-    font-size: 0.72rem;
-    font-weight: 600;
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-semibold);
     text-align: left;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+    letter-spacing: var(--letter-spacing-snug);
     color: var(--color-text-muted);
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: var(--border-width) solid var(--color-border);
   }
 
   .batch__table td {
-    padding: 0.4rem 0.5rem;
+    padding: var(--space-2);
     vertical-align: top;
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: var(--border-width) solid var(--color-border);
   }
 
   .batch__ioc {
@@ -543,7 +458,7 @@
   .batch__expand {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: var(--space-2);
     padding: 0;
     font: inherit;
     text-align: left;
@@ -555,19 +470,19 @@
 
   .batch__expand code {
     font-family: var(--font-mono);
-    font-size: 0.82rem;
+    font-size: var(--font-size-xs);
     word-break: break-all;
   }
 
   .batch__status {
-    padding: 0.1rem 0.5rem;
-    font-size: 0.72rem;
-    font-weight: 700;
+    padding: var(--pill-padding-y) var(--space-2);
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-bold);
     color: var(--color-text-muted);
     white-space: nowrap;
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-pill);
   }
 
   .batch__status--ok { color: var(--color-success); border-color: var(--color-success); }
@@ -579,13 +494,13 @@
   }
 
   .batch__check-status {
-    font-size: 0.74rem;
+    font-size: var(--font-size-2xs);
     color: var(--color-text-muted);
   }
 
   .checks {
     display: grid;
-    gap: 0.45rem;
+    gap: var(--space-2);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -595,15 +510,15 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.8rem;
+    gap: var(--space-2);
+    font-size: var(--font-size-xs);
   }
 
   .check__dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--color-text-muted);
+    width: var(--status-dot-size);
+    height: var(--status-dot-size);
+    border-radius: var(--radius-circle);
+    background: var(--color-neutral-marker);
   }
 
   .check__dot--ok { background: var(--color-success); }
@@ -612,19 +527,19 @@
   .check__dot--pending { background: var(--color-text-muted); }
 
   .check__label {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
     color: var(--color-text);
   }
 
   .check__summary {
     flex-basis: 100%;
     margin: 0;
-    font-size: 0.78rem;
+    font-size: var(--font-size-xs);
     color: var(--color-text-muted);
   }
 
   .eh__btn:disabled {
-    opacity: 0.55;
+    opacity: var(--opacity-disabled);
     cursor: not-allowed;
   }
 
@@ -638,7 +553,7 @@
     <!-- Full-size dismissal button behind the dialog: an accessible close target. -->
     <button type="button" class="modal__backdrop-button" aria-label="Close" onclick={close}></button>
     <div
-      class="modal"
+      class="modal modal--lg"
       role="dialog"
       aria-modal="true"
       aria-labelledby="email-headers-title"

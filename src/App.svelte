@@ -273,33 +273,33 @@
   .page {
     display: flex;
     flex-direction: column;
-    gap: 2.25rem;
+    gap: var(--space-7);
     min-height: 100vh;
-    max-width: 68rem;
+    max-width: var(--app-max-width);
     margin-inline: auto;
-    padding: 3.5rem 1.25rem 3rem;
+    padding: var(--space-10) var(--space-5) var(--space-9);
   }
 
   .hero {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
   .hero__eyebrow {
     margin: 0;
-    font-size: 0.8rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-wide);
     text-transform: uppercase;
     color: var(--color-accent);
   }
 
   .hero__title {
     margin: 0;
-    font-size: clamp(1.9rem, 4vw, 2.75rem);
-    line-height: 1.15;
-    letter-spacing: -0.02em;
+    font-size: var(--font-size-hero);
+    line-height: var(--line-height-heading);
+    letter-spacing: var(--letter-spacing-tighter);
   }
 
   .hero__subtitle {
@@ -311,21 +311,21 @@
   .content {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: var(--space-5);
   }
 
   .toolbar {
     position: sticky;
     top: 0;
-    z-index: 20;
+    z-index: var(--z-header);
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.75rem 1rem;
-    padding: 0.75rem 0;
-    background: color-mix(in srgb, var(--color-bg) 85%, transparent);
-    backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--color-border);
+    gap: var(--space-3) var(--space-4);
+    padding: var(--space-3) 0;
+    background: var(--header-veil);
+    backdrop-filter: var(--blur-header);
+    border-bottom: var(--border-width) solid var(--color-border);
   }
 
   /* On small screens the search bar and the filter pills wrap into many rows:
@@ -340,34 +340,31 @@
   .favorites-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    padding: 0.4rem 0.85rem;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
     font: inherit;
-    font-size: 0.86rem;
-    font-weight: 500;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-medium);
     color: var(--color-text-muted);
     background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-pill);
     cursor: pointer;
-    transition:
-      color 0.15s ease,
-      border-color 0.15s ease,
-      background-color 0.15s ease;
+    transition: var(--transition-colors);
   }
 
   /* Primary action of the toolbar: filled accent pill so it stands out. */
   .fast-analyze {
-    padding: 0.4rem 0.95rem;
+    padding: var(--space-2) var(--space-4);
     font: inherit;
-    font-size: 0.86rem;
-    font-weight: 600;
-    color: #08131f;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-accent-contrast);
     background: var(--color-accent);
     border: none;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     cursor: pointer;
-    transition: background-color 0.15s ease;
+    transition: var(--transition-colors);
   }
 
   .fast-analyze:hover {
@@ -378,18 +375,16 @@
   .extract-iocs,
   .history-open,
   .email-headers-open {
-    padding: 0.4rem 0.95rem;
+    padding: var(--space-2) var(--space-4);
     font: inherit;
-    font-size: 0.86rem;
-    font-weight: 600;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
     color: var(--color-text-muted);
     background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-pill);
     cursor: pointer;
-    transition:
-      color 0.15s ease,
-      border-color 0.15s ease;
+    transition: var(--transition-colors);
   }
 
   .extract-iocs:hover,
@@ -406,22 +401,22 @@
 
   .favorites-toggle--active {
     color: var(--color-accent);
-    background: rgb(56 189 248 / 0.12);
+    background: var(--color-accent-soft);
     border-color: var(--color-accent);
   }
 
   .favorites-toggle__count {
-    padding: 0.05rem 0.45rem;
+    padding: var(--pill-padding-y) var(--space-2);
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: var(--font-size-2xs);
     color: var(--color-text-muted);
-    background: rgb(148 163 184 / 0.12);
-    border-radius: 999px;
+    background: var(--color-neutral-soft);
+    border-radius: var(--radius-pill);
   }
 
   .favorites-toggle--active .favorites-toggle__count {
     color: var(--color-accent);
-    background: rgb(56 189 248 / 0.16);
+    background: var(--color-accent-soft-strong);
   }
 
   .status {
@@ -430,7 +425,7 @@
   }
 
   .status--muted {
-    font-size: 0.85rem;
+    font-size: var(--font-size-sm);
   }
 
   .status--error {
@@ -439,13 +434,13 @@
 
   .retry {
     align-self: flex-start;
-    padding: 0.5rem 1.3rem;
+    padding: var(--space-2) var(--space-5);
     font: inherit;
-    font-weight: 600;
-    color: #08131f;
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-accent-contrast);
     background: var(--color-accent);
     border: none;
-    border-radius: 999px;
+    border-radius: var(--radius-pill);
     cursor: pointer;
   }
 
@@ -455,14 +450,14 @@
 
   .footer {
     margin-top: auto;
-    padding-top: 1.5rem;
-    border-top: 1px solid var(--color-border);
+    padding-top: var(--space-5);
+    border-top: var(--border-width) solid var(--color-border);
   }
 
   .footer p {
     margin: 0;
     max-width: 60rem;
-    font-size: 0.82rem;
+    font-size: var(--font-size-xs);
     color: var(--color-text-muted);
   }
 </style>

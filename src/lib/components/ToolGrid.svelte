@@ -45,7 +45,7 @@
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 21rem), 1fr));
-    gap: 1.1rem;
+    gap: var(--space-4);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -57,10 +57,10 @@
 
   .empty {
     margin: 0;
-    padding: 2.5rem 1rem;
+    padding: var(--space-8) var(--space-4);
     text-align: center;
     color: var(--color-text-muted);
-    border: 1px dashed var(--color-border);
+    border: var(--border-width) dashed var(--color-border);
     border-radius: var(--radius-lg);
   }
 </style>

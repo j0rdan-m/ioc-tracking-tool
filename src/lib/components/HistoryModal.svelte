@@ -243,7 +243,7 @@
       onclick={() => (open = false)}
     ></button>
     <div
-      class="modal"
+      class="modal modal--md"
       role="dialog"
       aria-modal="true"
       aria-labelledby="history-title"
@@ -632,138 +632,53 @@
 {/if}
 
 <style>
-  .modal__backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 50;
-    display: flex;
-    padding: 2rem 1rem;
-    overflow-y: auto;
-    background: rgb(2 8 23 / 0.72);
-    backdrop-filter: blur(4px);
-  }
-
-  /* Invisible button covering the backdrop so clicking outside the dialog
-     is a real, keyboard-reachable close action. */
-  .modal__backdrop-button {
-    position: absolute;
-    inset: 0;
-    background: transparent;
-    border: none;
-    cursor: default;
-  }
-
-  .modal {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.9rem;
-    width: min(52rem, 100%);
-    margin: auto;
-    padding: 1.5rem;
-    background: var(--color-surface-raised);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-card);
-  }
-
-  .modal__head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .modal__eyebrow {
-    margin: 0 0 0.15rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--color-accent);
-  }
-
-  .modal__title {
-    margin: 0;
-    font-size: 1.25rem;
-    letter-spacing: -0.01em;
-  }
-
-  .modal__close {
-    padding: 0.25rem 0.6rem;
-    font: inherit;
-    font-size: 0.9rem;
-    color: var(--color-text-muted);
-    background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
-    cursor: pointer;
-    transition:
-      color 0.15s ease,
-      border-color 0.15s ease;
-  }
-
-  .modal__close:hover {
-    color: var(--color-text);
-    border-color: var(--color-accent);
-  }
-
-  .modal__hint,
-  .modal__foot {
-    margin: 0;
-    font-size: 0.85rem;
-    color: var(--color-text-muted);
-  }
-
-  .modal__foot {
-    font-size: 0.72rem;
-  }
+  /* Dialog chrome (backdrop, box, header, buttons, footer) is shared by every
+     modal: see src/styles/components.css. Only the content below is local. */
 
   .hist__feedback {
     margin: 0;
     align-self: flex-start;
-    padding: 0.4rem 0.7rem;
-    font-size: 0.82rem;
-    font-weight: 600;
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
     color: var(--color-success);
-    background: rgb(74 222 128 / 0.12);
-    border-radius: 999px;
+    background: var(--color-success-soft);
+    border-radius: var(--radius-pill);
   }
 
   .hist__filters {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
   .hist__search {
     flex: 1 1 14rem;
     min-width: 0;
-    padding: 0.45rem 0.9rem;
+    padding: var(--space-2) var(--space-4);
     font: inherit;
-    font-size: 0.88rem;
+    font-size: var(--font-size-sm);
     color: var(--color-text);
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-pill);
   }
 
   .hist__search:focus,
   .hist__select:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgb(56 189 248 / 0.18);
+    box-shadow: var(--shadow-focus);
   }
 
   .hist__select {
-    padding: 0.45rem 0.7rem;
+    padding: var(--space-2) var(--space-3);
     font: inherit;
-    font-size: 0.82rem;
+    font-size: var(--font-size-xs);
     color: var(--color-text);
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
   }
 
   .hist__bar {
@@ -771,31 +686,28 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
   .hist__count {
-    font-size: 0.82rem;
-    font-weight: 600;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
   }
 
   .hist__primary,
   .hist__secondary,
   .hist__danger {
-    padding: 0.4rem 0.9rem;
+    padding: var(--space-2) var(--space-4);
     font: inherit;
-    font-size: 0.8rem;
-    font-weight: 600;
-    border-radius: 999px;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    border-radius: var(--radius-pill);
     cursor: pointer;
-    transition:
-      color 0.15s ease,
-      border-color 0.15s ease,
-      background-color 0.15s ease;
+    transition: var(--transition-colors);
   }
 
   .hist__primary {
-    color: #08131f;
+    color: var(--color-accent-contrast);
     background: var(--color-accent);
     border: none;
   }
@@ -807,7 +719,7 @@
   .hist__secondary {
     color: var(--color-text-muted);
     background: transparent;
-    border: 1px solid var(--color-border);
+    border: var(--border-width) solid var(--color-border);
   }
 
   .hist__secondary:hover:not(:disabled) {
@@ -816,69 +728,69 @@
   }
 
   .hist__secondary:disabled {
-    opacity: 0.55;
+    opacity: var(--opacity-disabled);
     cursor: not-allowed;
   }
 
   .hist__danger {
     color: var(--color-danger);
     background: transparent;
-    border: 1px solid rgb(248 113 113 / 0.5);
+    border: var(--border-width) solid var(--color-danger-border);
   }
 
   .hist__danger:hover {
     border-color: var(--color-danger);
-    background: rgb(248 113 113 / 0.12);
+    background: var(--color-danger-soft);
   }
 
   .hist__confirm {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    padding: 0.7rem 0.8rem;
-    background: rgb(248 113 113 / 0.08);
-    border: 1px solid rgb(248 113 113 / 0.4);
-    border-radius: 10px;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    background: var(--color-danger-soft-weak);
+    border: var(--border-width) solid var(--color-danger-border-strong);
+    border-radius: var(--radius-md);
   }
 
   .hist__confirm-text {
     margin: 0;
-    font-size: 0.84rem;
+    font-size: var(--font-size-xs);
   }
 
   .hist__confirm-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
   .hist__empty {
     margin: 0;
-    font-size: 0.86rem;
+    font-size: var(--font-size-sm);
     color: var(--color-text-muted);
   }
 
   .hist__table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.84rem;
+    font-size: var(--font-size-xs);
     text-align: left;
   }
 
   .hist__table th {
-    padding: 0.35rem 0.5rem;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.06em;
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-snug);
     text-transform: uppercase;
     color: var(--color-text-muted);
-    border-bottom: 1px solid var(--color-border);
+    border-bottom: var(--border-width) solid var(--color-border);
   }
 
   .hist__table td {
-    padding: 0.45rem 0.5rem;
+    padding: var(--space-2);
     vertical-align: top;
-    border-bottom: 1px solid rgb(36 52 92 / 0.6);
+    border-bottom: var(--border-width) solid var(--color-border-subtle);
   }
 
   .hist__open {
@@ -893,7 +805,7 @@
 
   .hist__open code {
     font-family: var(--font-mono);
-    font-size: 0.82rem;
+    font-size: var(--font-size-xs);
     word-break: break-all;
   }
 
@@ -903,33 +815,33 @@
 
   .hist__verdict {
     display: inline-block;
-    padding: 0.1rem 0.55rem;
-    font-size: 0.74rem;
-    font-weight: 600;
+    padding: var(--pill-padding-y) var(--space-2);
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-semibold);
     white-space: nowrap;
     color: var(--color-text-muted);
-    background: rgb(148 163 184 / 0.12);
-    border-radius: 999px;
+    background: var(--color-neutral-soft);
+    border-radius: var(--radius-pill);
   }
 
   .hist__verdict--benign {
     color: var(--color-success);
-    background: rgb(74 222 128 / 0.14);
+    background: var(--color-success-soft);
   }
 
   .hist__verdict--suspicious {
-    color: rgb(250 204 21);
-    background: rgb(250 204 21 / 0.14);
+    color: var(--color-warning);
+    background: var(--color-warning-soft);
   }
 
   .hist__verdict--malicious {
     color: var(--color-danger);
-    background: rgb(248 113 113 / 0.14);
+    background: var(--color-danger-soft);
   }
 
   .hist__date {
     font-family: var(--font-mono);
-    font-size: 0.78rem;
+    font-size: var(--font-size-xs);
     color: var(--color-text-muted);
   }
 
@@ -941,14 +853,14 @@
   .hist__detail {
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: var(--space-3);
   }
 
   .hist__back {
     align-self: flex-start;
     padding: 0;
     font: inherit;
-    font-size: 0.82rem;
+    font-size: var(--font-size-xs);
     color: var(--color-text-muted);
     background: transparent;
     border: none;
@@ -961,7 +873,7 @@
 
   .hist__ioc {
     margin: 0;
-    font-size: 1.05rem;
+    font-size: var(--font-size-lg);
     word-break: break-all;
   }
 
@@ -972,68 +884,65 @@
   .hist__meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem 1.4rem;
+    gap: var(--space-2) var(--space-6);
     margin: 0;
   }
 
   .hist__meta dt {
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
+    font-size: var(--font-size-2xs);
+    letter-spacing: var(--letter-spacing-snug);
     text-transform: uppercase;
     color: var(--color-text-muted);
   }
 
   .hist__meta dd {
-    margin: 0.1rem 0 0;
-    font-size: 0.85rem;
-    font-weight: 600;
+    margin: 0 0 0;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
   }
 
   .hist__section {
     display: flex;
     flex-direction: column;
-    gap: 0.45rem;
-    padding: 0.75rem 0.9rem;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
     background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
   }
 
   .hist__section-title {
     margin: 0;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.14em;
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-wide);
     text-transform: uppercase;
     color: var(--color-accent);
   }
 
   .hist__note {
     margin: 0;
-    font-size: 0.78rem;
+    font-size: var(--font-size-xs);
     color: var(--color-text-muted);
   }
 
   .hist__verdicts {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
+    gap: var(--space-2);
   }
 
   .hist__verdict-button {
-    padding: 0.3rem 0.85rem;
+    padding: var(--space-1) var(--space-3);
     font: inherit;
-    font-size: 0.8rem;
-    font-weight: 600;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
     color: var(--color-text-muted);
     background: transparent;
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-pill);
     cursor: pointer;
-    transition:
-      color 0.15s ease,
-      border-color 0.15s ease,
-      background-color 0.15s ease;
+    transition: var(--transition-colors);
   }
 
   .hist__verdict-button:hover {
@@ -1042,7 +951,7 @@
   }
 
   .hist__verdict-button--active {
-    color: #08131f;
+    color: var(--color-accent-contrast);
     background: var(--color-accent);
     border-color: var(--color-accent);
   }
@@ -1050,7 +959,7 @@
   .hist__tags {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
+    gap: var(--space-2);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -1059,18 +968,18 @@
   .hist__tag {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.15rem 0.6rem;
-    font-size: 0.78rem;
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--font-size-xs);
     color: var(--color-text);
-    background: rgb(148 163 184 / 0.14);
-    border-radius: 999px;
+    background: var(--color-neutral-chip);
+    border-radius: var(--radius-pill);
   }
 
   .hist__tag-remove {
     padding: 0;
     font: inherit;
-    font-size: 0.7rem;
+    font-size: var(--font-size-2xs);
     color: var(--color-text-muted);
     background: transparent;
     border: none;
@@ -1083,92 +992,92 @@
 
   .hist__tag-add {
     display: flex;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
   .hist__tag-input {
     flex: 1 1 12rem;
     min-width: 0;
-    padding: 0.4rem 0.8rem;
+    padding: var(--space-2) var(--space-3);
     font: inherit;
-    font-size: 0.84rem;
+    font-size: var(--font-size-xs);
     color: var(--color-text);
     background: var(--color-surface-raised);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
   }
 
   .hist__tag-input:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgb(56 189 248 / 0.18);
+    box-shadow: var(--shadow-focus);
   }
 
   .hist__notes {
-    padding: 0.6rem 0.8rem;
+    padding: var(--space-2) var(--space-3);
     font: inherit;
-    font-size: 0.86rem;
-    line-height: 1.5;
+    font-size: var(--font-size-sm);
+    line-height: var(--line-height-tight);
     color: var(--color-text);
     background: var(--color-surface-raised);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
     resize: vertical;
   }
 
   .hist__notes:focus {
     outline: none;
     border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px rgb(56 189 248 / 0.18);
+    box-shadow: var(--shadow-focus);
   }
 
   .hist__notes-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.6rem;
+    gap: var(--space-2);
   }
 
   .hist__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
   /* ---------- Stored provider results ---------- */
   .checks {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: var(--space-2);
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
   .check {
-    padding: 0.6rem 0.7rem;
+    padding: var(--space-2) var(--space-3);
     background: var(--color-surface-raised);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
   }
 
   .check__head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
   }
 
   .check__dot {
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 999px;
-    background: rgb(148 163 184 / 0.7);
+    width: var(--status-dot-size);
+    height: var(--status-dot-size);
+    border-radius: var(--radius-circle);
+    background: var(--color-neutral-marker);
   }
 
   .check__dot--ok {
     background: var(--color-success);
-    box-shadow: 0 0 6px rgb(74 222 128 / 0.8);
+    box-shadow: var(--shadow-glow-success);
   }
 
   .check__dot--empty {
@@ -1177,35 +1086,35 @@
 
   .check__dot--error {
     background: var(--color-danger);
-    box-shadow: 0 0 6px rgb(248 113 113 / 0.8);
+    box-shadow: var(--shadow-glow-danger);
   }
 
   .check__dot--cancelled {
     background: transparent;
-    border: 1px solid var(--color-text-muted);
+    border: var(--border-width) solid var(--color-text-muted);
   }
 
   .check__label {
-    font-weight: 600;
-    font-size: 0.86rem;
+    font-weight: var(--font-weight-semibold);
+    font-size: var(--font-size-sm);
   }
 
   .check__state {
-    font-size: 0.74rem;
-    font-weight: 600;
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-semibold);
     color: var(--color-text-muted);
   }
 
   .check__ms {
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: var(--font-size-2xs);
     color: var(--color-text-muted);
   }
 
   .check__open {
     margin-left: auto;
-    font-size: 0.76rem;
-    font-weight: 600;
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-semibold);
     color: var(--color-accent);
     text-decoration: none;
   }
@@ -1215,38 +1124,38 @@
   }
 
   .check__summary {
-    margin: 0.35rem 0 0;
-    font-size: 0.84rem;
+    margin: var(--space-1) 0 0;
+    font-size: var(--font-size-xs);
   }
 
   .check__fields {
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
-    margin: 0.5rem 0 0;
+    gap: var(--space-1);
+    margin: var(--space-2) 0 0;
   }
 
   .check__field {
     display: flex;
-    gap: 0.75rem;
+    gap: var(--space-3);
   }
 
   .check__field dt {
     flex: 0 0 8.5rem;
-    font-size: 0.76rem;
+    font-size: var(--font-size-2xs);
     color: var(--color-text-muted);
   }
 
   .check__value {
     margin: 0;
     font-family: var(--font-mono);
-    font-size: 0.78rem;
+    font-size: var(--font-size-xs);
     white-space: pre-line;
     word-break: break-word;
   }
 
   .check__value--warn {
-    color: rgb(250 204 21);
+    color: var(--color-warning);
   }
 
   .check__value--bad {
@@ -1254,8 +1163,8 @@
   }
 
   .check__message {
-    margin: 0.4rem 0 0;
-    font-size: 0.8rem;
+    margin: var(--space-2) 0 0;
+    font-size: var(--font-size-xs);
     color: var(--color-text-muted);
   }
 
@@ -1266,8 +1175,8 @@
   .gofurther__list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr));
-    gap: 0.5rem;
-    margin: 0.25rem 0 0;
+    gap: var(--space-2);
+    margin: var(--space-1) 0 0;
     padding: 0;
     list-style: none;
   }
@@ -1275,14 +1184,14 @@
   .gofurther__link {
     display: flex;
     flex-direction: column;
-    gap: 0.1rem;
+    gap: 0;
     height: 100%;
-    padding: 0.55rem 0.75rem;
+    padding: var(--space-2) var(--space-3);
     background: var(--color-surface-raised);
-    border: 1px solid var(--color-border);
-    border-radius: 10px;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
     text-decoration: none;
-    transition: border-color 0.15s ease;
+    transition: var(--transition-field);
   }
 
   .gofurther__link:hover {
@@ -1290,13 +1199,13 @@
   }
 
   .gofurther__name {
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
     color: var(--color-accent);
   }
 
   .gofurther__hint {
-    font-size: 0.75rem;
+    font-size: var(--font-size-2xs);
     color: var(--color-text-muted);
   }
 </style>
