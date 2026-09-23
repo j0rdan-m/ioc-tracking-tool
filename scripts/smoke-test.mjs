@@ -19,6 +19,8 @@ import { getDeepLinks } from '../src/lib/utils/deep-links.js';
 import { computeBatchStatus, runBatchAnalysis } from '../src/lib/utils/batch-analyze.js';
 import { extractIocs } from '../src/lib/utils/extract-iocs.js';
 import { defangIoc, normalizeIoc, refang, refangValue } from '../src/lib/utils/refang.js';
+import { parseHeaders } from '../src/lib/utils/email-header-parser.js';
+import { analyzeHeaders } from '../src/lib/utils/email-header-analyzer.js';
 
 const catalogPath = new URL('../src/data/tools.json', import.meta.url);
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
@@ -732,6 +734,141 @@ await abortAwareRun.done;
 if (computeBatchStatus(abortAwareRun.rows[0].checkStates) !== 'Cancelled') {
   throw new Error('Batch: an aborted check must read Cancelled, not an error/verdict (AC11).');
 }
+
+// --- Email headers (local RFC 5322 parsing + authentication) --------------
+// Parsing must stay offline: an accidental network call would make the block
+// below throw, since the global fetch is replaced by a throwing stub.
+globalThis.fetch = () => {
+  throw new Error('email header analysis must not perform network calls');
+};
+
+const headerSample = [
+  'Received: from mail-eu.smtp.example.com (mail-eu.smtp.example.com [209.85.202.48])',
+  '\tby mx.google.com with ESMTPS id abc123',
+  '\tfor <victim@example.org>',
+  '\t; Mon, 15 Sep 2025 10:00:00 +0000',
+  'Received: from workstation.local ([192.168.1.20])',
+  '\tby mail-eu.smtp.example.com with ESMTP id def456',
+  '\t; Mon, 15 Sep 2025 09:59:50 +0000',
+  'Authentication-Results: mx.google.com;',
+  '\tspf=pass (google.com: domain of sender@phish.example designates 209.85.202.48 as permitted sender)',
+  '\tsmtp.mailfrom=sender@phish.example;',
+  '\tdkim=pass header.d=phish.example header.s=sel1;',
+  '\tdmarc=fail (p=REJECT sp=REJECT dis=NONE) header.from=example.org',
+  'From: "Support" <help@example.org>',
+  'Reply-To: reply@other.example',
+  'Return-Path: <bounce@phish.example>',
+  'Message-ID: <abc@mail.phish.example>',
+  'this line has no colon and must be skipped, not abort the parse',
+].join('\r\n');
+
+const parsedHeaders = parseHeaders(headerSample);
+if (parsedHeaders.field('From') !== '"Support" <help@example.org>') {
+  throw new Error(`Email headers: wrong From field, got "${parsedHeaders.field('From')}".`);
+}
+
+// RFC 5322 §3.2.3: a folded field is one logical value.
+const authValue = parsedHeaders.field('Authentication-Results');
+if (!authValue?.includes('smtp.mailfrom=sender@phish.example') || !authValue?.includes('header.from=example.org')) {
+  throw new Error(`Email headers: folded Authentication-Results must be unfolded, got "${authValue}".`);
+}
+
+const headerAnalysis = analyzeHeaders(parsedHeaders);
+if (headerAnalysis.summary.from !== 'help@example.org' || headerAnalysis.summary.replyTo !== 'reply@other.example') {
+  throw new Error(`Email headers: wrong From/Reply-To summary, got ${JSON.stringify(headerAnalysis.summary)}.`);
+}
+if (headerAnalysis.summary.returnPath !== 'bounce@phish.example' || headerAnalysis.summary.messageIdDomain !== 'mail.phish.example') {
+  throw new Error(`Email headers: wrong Return-Path/Message-ID summary, got ${JSON.stringify(headerAnalysis.summary)}.`);
+}
+
+// Authentication-Results (SPF/DKIM/DMARC + their domains).
+if (headerAnalysis.auth.spf.result !== 'PASS' || headerAnalysis.auth.spf.domain !== 'sender@phish.example') {
+  throw new Error(`Email headers: wrong SPF result, got ${JSON.stringify(headerAnalysis.auth.spf)}.`);
+}
+if (headerAnalysis.auth.dkim.result !== 'PASS' || headerAnalysis.auth.dkim.domain !== 'phish.example') {
+  throw new Error(`Email headers: wrong DKIM result, got ${JSON.stringify(headerAnalysis.auth.dkim)}.`);
+}
+if (headerAnalysis.auth.dmarc.result !== 'FAIL' || headerAnalysis.auth.dmarc.domain !== 'example.org') {
+  throw new Error(`Email headers: wrong DMARC result, got ${JSON.stringify(headerAnalysis.auth.dmarc)}.`);
+}
+
+// Mail path: ordered earliest → final receiving server, private IPs flagged.
+if (headerAnalysis.mailPath.length !== 2) {
+  throw new Error(`Email headers: expected 2 hops, got ${headerAnalysis.mailPath.length}.`);
+}
+const [firstHop, lastHop] = headerAnalysis.mailPath;
+if (firstHop.ip !== '192.168.1.20' || firstHop.ipKind !== 'private') {
+  throw new Error(`Email headers: the earliest hop must come first and be flagged private, got ${JSON.stringify(firstHop)}.`);
+}
+if (lastHop.ip !== '209.85.202.48' || lastHop.host !== 'mail-eu.smtp.example.com') {
+  throw new Error(`Email headers: wrong final hop, got ${JSON.stringify(lastHop)}.`);
+}
+if (headerAnalysis.earliestPublicIp !== '209.85.202.48') {
+  throw new Error(`Email headers: wrong earliest public IP, got "${headerAnalysis.earliestPublicIp}".`);
+}
+if (headerAnalysis.mailPath[0].dateIso !== '2025-09-15T09:59:50.000Z' || headerAnalysis.transit.durationMs !== 10000) {
+  throw new Error(`Email headers: wrong transit timing, got ${JSON.stringify(headerAnalysis.transit)}.`);
+}
+
+// Identity mismatch + factual signals (never a verdict).
+if (headerAnalysis.identity.differs !== true) {
+  throw new Error('Email headers: mismatching From/Reply-To/Return-Path domains must be reported.');
+}
+const signalLabels = headerAnalysis.signals.map((signal) => signal.label);
+for (const expected of ['SPF PASS', 'DMARC failed', 'Reply-To domain differs from From domain']) {
+  if (!signalLabels.includes(expected)) {
+    throw new Error(`Email headers: missing "${expected}" signal, got ${JSON.stringify(signalLabels)}.`);
+  }
+}
+if (signalLabels.some((label) => /safe|malicious/i.test(label))) {
+  throw new Error(`Email headers: signals must stay factual, got ${JSON.stringify(signalLabels)}.`);
+}
+
+// IoC candidates: public IPs only, plus the addresses/domains for the extractor.
+if (headerAnalysis.iocs.ips.join(',') !== '209.85.202.48') {
+  throw new Error(`Email headers: private IPs must be excluded from the IoC list, got ${JSON.stringify(headerAnalysis.iocs.ips)}.`);
+}
+if (headerAnalysis.iocs.emails.join(',') !== 'help@example.org,reply@other.example,bounce@phish.example') {
+  throw new Error(`Email headers: wrong e-mail candidates, got ${JSON.stringify(headerAnalysis.iocs.emails)}.`);
+}
+for (const domain of ['example.org', 'other.example', 'phish.example', 'mail.phish.example']) {
+  if (!headerAnalysis.iocs.domains.includes(domain)) {
+    throw new Error(`Email headers: missing "${domain}" in the domain candidates, got ${JSON.stringify(headerAnalysis.iocs.domains)}.`);
+  }
+}
+
+// Fallbacks: Received-SPF when there is no Authentication-Results, DKIM-Signature
+// for the signing domain/selector, and a malformed Received date must degrade to
+// null (it used to throw a RangeError and lose the whole analysis).
+const fallbackAnalysis = analyzeHeaders(
+  parseHeaders(
+    [
+      'Received-SPF: Pass (mailfrom) smtp.mailfrom=spf.example',
+      'DKIM-Signature: v=1; a=rsa-sha256; d=signed.example; s=selector42; b=abc',
+      'Received: from bare-relay by no-date.example with SMTP',
+      'Received: from broken (broken.example) by last.example with SMTP; not-a-date',
+      'From: someone@signed.example',
+    ].join('\n'),
+  ),
+);
+if (fallbackAnalysis.auth.spf.result !== 'PASS' || fallbackAnalysis.auth.spf.domain !== 'spf.example') {
+  throw new Error(`Email headers: Received-SPF fallback failed, got ${JSON.stringify(fallbackAnalysis.auth.spf)}.`);
+}
+if (
+  fallbackAnalysis.auth.dkim.result !== 'PASS' ||
+  fallbackAnalysis.auth.dkim.domain !== 'signed.example' ||
+  fallbackAnalysis.auth.dkim.selector !== 'selector42'
+) {
+  throw new Error(`Email headers: DKIM-Signature fallback failed, got ${JSON.stringify(fallbackAnalysis.auth.dkim)}.`);
+}
+if (fallbackAnalysis.mailPath[0].dateIso !== null) {
+  throw new Error('Email headers: a malformed Received date must resolve to null, not throw.');
+}
+if (!fallbackAnalysis.signals.some((signal) => signal.label === 'Unable to fully parse one or more Received headers')) {
+  throw new Error('Email headers: a hop without IP nor date must surface an explicit signal.');
+}
+
+globalThis.fetch = originalFetch;
 
 console.log(`SMOKE OK — ${loaded.tools.length} tools / ${loaded.categories.length} categories`);
 console.log(`ids: ${ids.join(', ')}`);

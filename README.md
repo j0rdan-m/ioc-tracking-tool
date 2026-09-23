@@ -89,6 +89,37 @@ Implementation: `src/lib/utils/batch-analyze.js` (queue, bounded concurrency, st
 pure and framework-agnostic, exercised by `npm run smoke`) driven from
 `src/lib/components/IocExtractorModal.svelte`.
 
+## Analyze email headers
+
+The **📧 Email headers** button opens a modal that turns a block of raw e-mail headers into a
+readable story — again entirely offline: the paste is parsed in the browser and never uploaded.
+
+- **Input**: paste the raw headers (as exported by your mail client) and press *Analyze headers*.
+  Folded headers (RFC 5322 §3.2.3 continuation lines) are unfolded first;
+- **Summary tab**: `From`, `Reply-To`, `Return-Path`, the `Message-ID` domain, the SPF, DKIM
+  (with its selector) and DMARC results read from `Authentication-Results`, the number of
+  `Received` hops, the earliest public IP, the transit start time and duration, plus factual
+  **signals** — including an explicit domain-mismatch warning when `From`, `Reply-To` and
+  `Return-Path` do not share a domain. Signals are descriptive only: no `Safe` / `Malicious` verdict
+  is ever derived;
+- **Mail path tab**: every `Received` hop, ordered earliest → final receiving server (numbered
+  backwards, so hop 1 is where the message started), with the announced host, the IPv4 literal and
+  the date; private / loopback / link-local addresses are flagged;
+- **IoC extraction tab**: the IPs, domains and e-mail addresses found in the headers are
+  deduplicated and defanged for display, with *Copy* (normalized) and *Defang* actions per
+  indicator. Selecting them and pressing **⚡ Analyze selected** runs the same keyless batch as the
+  Extract IoCs modal (3 IoCs at a time, progressive table, stoppable, recorded in the local
+  history), while **⚡ Fast analyze** on a single indicator hands it over to the Fast analyze modal.
+  Private / local IPs are listed separately as non-investigable;
+- **Raw headers tab**: the paste exactly as it was entered, for copy/paste back into another tool;
+- **Close ≠ clear**: closing the modal stops a running batch but keeps the pasted headers, so they
+  are still there next time; only *Clear headers* (with a confirmation) discards them.
+
+Implementation: `src/lib/utils/email-header-parser.js` (unfolding + ordered field lookup) and
+`src/lib/utils/email-header-analyzer.js` (auth results, mail path, identity signals — pure modules
+exercised by `npm run smoke`), rendered by `src/lib/components/EmailHeadersModal.svelte` and wired
+in `App.svelte` through the `onAnalyze` hand-off, exactly like the other modals.
+
 ## Getting started
 
 ```bash

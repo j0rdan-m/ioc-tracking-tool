@@ -1,5 +1,6 @@
 <script>
   import CategoryFilter from './lib/components/CategoryFilter.svelte';
+  import EmailHeadersModal from './lib/components/EmailHeadersModal.svelte';
   import FastAnalyzeModal from './lib/components/FastAnalyzeModal.svelte';
   import HistoryModal from './lib/components/HistoryModal.svelte';
   import IocExtractorModal from './lib/components/IocExtractorModal.svelte';
@@ -44,6 +45,7 @@
   let fastAnalyzePrefill = $state('');
   let extractorOpen = $state(false);
   let historyOpen = $state(false);
+  let emailHeadersOpen = $state(false);
   let catalogPromise = $state(toolRepository.getCatalog());
 
   // IoC shape detected in the current query (null when it is not an observable).
@@ -114,6 +116,17 @@
     historyOpen = false;
     openFastAnalyze(normalized);
   }
+
+  /**
+   * Fast analyze hand-off coming from the Analyze email headers modal: closes
+   * the modal and opens Fast analyze seeded with the normalized value.
+   *
+   * @param {string} normalized
+   */
+  function analyzeFromHeaders(normalized) {
+    emailHeadersOpen = false;
+    openFastAnalyze(normalized);
+  }
 </script>
 
 <div class="page">
@@ -180,6 +193,14 @@
         >
           🗒 History
         </button>
+        <button
+          type="button"
+          class="email-headers-open"
+          onclick={() => (emailHeadersOpen = true)}
+          title="Parse pasted email headers: authentication, mail path, extracted IoCs"
+        >
+          📧 Email headers
+        </button>
         <CategoryFilter
           categories={catalog.categories}
           bind:selectedId={selectedCategoryId}
@@ -231,6 +252,7 @@
       <FastAnalyzeModal bind:open={fastAnalyzeOpen} {catalog} prefill={fastAnalyzePrefill} />
       <IocExtractorModal bind:open={extractorOpen} {catalog} onAnalyze={analyzeExtracted} />
       <HistoryModal bind:open={historyOpen} {catalog} onAnalyze={analyzeFromHistory} />
+      <EmailHeadersModal bind:open={emailHeadersOpen} {catalog} onAnalyze={analyzeFromHeaders} />
     {:catch error}
       <p class="status status--error" role="alert">
         Could not load the tool catalog: {error.message}
@@ -354,7 +376,8 @@
 
   /* Secondary toolbar actions: outlined pills, same shape as the favorites one. */
   .extract-iocs,
-  .history-open {
+  .history-open,
+  .email-headers-open {
     padding: 0.4rem 0.95rem;
     font: inherit;
     font-size: 0.86rem;
@@ -370,7 +393,8 @@
   }
 
   .extract-iocs:hover,
-  .history-open:hover {
+  .history-open:hover,
+  .email-headers-open:hover {
     color: var(--color-text);
     border-color: var(--color-accent);
   }
