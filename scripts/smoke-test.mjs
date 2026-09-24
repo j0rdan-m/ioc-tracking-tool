@@ -33,6 +33,35 @@ import {
 } from '../src/lib/services/export/export-model.js';
 import { EXPORT_MIME_TYPES, exportInvestigation } from '../src/lib/services/export/investigation-exporter.js';
 import { escapeCell } from '../src/lib/services/export/csv-exporter.js';
+import {
+  INVESTIGATION_STATUSES,
+  RELATIONSHIP_TYPES,
+  TIMELINE_EVENT_TYPES,
+  WORKSPACE_NODE_TYPES,
+  addNode,
+  addRelationship,
+  createInvestigation,
+  detectNodeType,
+  nodeIdOf,
+  recordTimelineEvent,
+  removeNode,
+  sanitizeInvestigation,
+  setInvestigationNotes,
+  setInvestigationTags,
+  setNodeAnalysis,
+  setNodeHidden,
+  setNodeNotes,
+  setNodePosition,
+  setNodeTags,
+  setNodeVerdict,
+  setStatus,
+} from '../src/lib/services/workspace/investigation-model.js';
+import {
+  InvestigationRepository,
+  createIndexedDbWorkspaceAdapter,
+  createMemoryWorkspaceAdapter,
+} from '../src/lib/services/workspace/investigation-repository.js';
+import { InvestigationHistoryService } from '../src/lib/services/investigation-history.js';
 
 const catalogPath = new URL('../src/data/tools.json', import.meta.url);
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
@@ -1312,6 +1341,460 @@ for (const type of catalog.iocTypes) {
 if (typeLabel('nope') !== 'nope') {
   throw new Error('Export: typeLabel must fall back to the identifier.');
 }
+
+// --- Investigation workspace (US V2, lot 1) --------------------------------
+// This whole section runs while `globalThis.fetch` still throws (stubbed by
+// the export tests above): creating, mutating and persisting a workspace must
+// never touch the network (US V2: local-only, pivots only via expected sources).
+
+const wsNow = '2026-09-24T14:26:00.000Z';
+
+// AC01: creation with name / description / tags + one created timeline event.
+let ws = createInvestigation(
+  {
+    name: 'Suspicious customer email',
+    description: 'Phishing campaign seen on 24/09',
+    tags: ['Phishing', 'Customer Incident'],
+  },
+  wsNow,
+);
+if (ws.name !== 'Suspicious customer email' || ws.description !== 'Phishing campaign seen on 24/09') {
+  throw new Error('Workspace: name/description must be stored (AC01).');
+}
+if (ws.tags.join(',') !== 'phishing,customer-incident') {
+  throw new Error(`Workspace: tags must normalize like V1.3, got ${JSON.stringify(ws.tags)} (AC01).`);
+}
+if (
+  ws.status !== 'open' ||
+  ws.nodes.length !== 0 ||
+  ws.timeline.length !== 1 ||
+  ws.timeline[0].type !== 'investigation_created'
+) {
+  throw new Error('Workspace: a fresh investigation must be open and record its creation (AC01/AC15).');
+}
+let wsThrew = false;
+try {
+  createInvestigation({ name: '   ' }, wsNow);
+} catch {
+  wsThrew = true;
+}
+if (!wsThrew) {
+  throw new Error('Workspace: an empty name must be rejected (AC01).');
+}
+
+// AC02/AC03: auto-typed nodes; defanged, plain and uppercase spellings of the
+// same indicator collapse into ONE node keeping the V1.3 identity.
+ws = addNode(ws, { value: 'evil[.]example.com', seed: true }, wsNow);
+ws = addNode(ws, { value: 'EVIL.example.COM' }, wsNow);
+if (ws.nodes.length !== 1) {
+  throw new Error(`Workspace: spellings must deduplicate, got ${ws.nodes.length} nodes (AC03).`);
+}
+const wsDomain = ws.nodes[0];
+if (wsDomain.id !== nodeIdOf('domain', 'evil.example.com') || !wsDomain.seed || wsDomain.depth !== 0) {
+  throw new Error('Workspace: seed nodes must use the V1.3 identity and depth 0 (AC03).');
+}
+// Re-adding without the seed flag must not clear it: the flag is sticky.
+ws = addNode(ws, { value: 'evil.example.com' }, wsNow);
+if (!ws.nodes[0].seed) {
+  throw new Error('Workspace: the seed flag must be sticky (AC03).');
+}
+
+ws = addNode(ws, { value: 'hxxps://evil[.]example[.]com/login' }, wsNow); // refang detect → url
+ws = addNode(ws, { value: 'AS12345' }, wsNow); // → asn
+ws = addNode(ws, { value: 'admin[@]evil.example.com' }, wsNow); // → email
+ws = addNode(ws, { value: 'd41d8cd98f00b204e9800998ecf8427e' }, wsNow); // → file (hash)
+ws = addNode(ws, { value: '203.0.113.24', seed: true }, wsNow); // → ip
+const wsTypes = ws.nodes.map((node) => node.typeId).sort().join(',');
+if (wsTypes !== 'asn,domain,email,file,ip,url') {
+  throw new Error(`Workspace: unexpected node types "${wsTypes}" (AC02).`);
+}
+if (detectNodeType('AS64500') !== 'asn' || detectNodeType('this is not an ioc') !== null) {
+  throw new Error('Workspace: detectNodeType must recognize ASNs and reject plain text.');
+}
+wsThrew = false;
+try {
+  addNode(ws, { value: '??? ???' }, wsNow);
+} catch {
+  wsThrew = true;
+}
+if (!wsThrew) {
+  throw new Error('Workspace: an undetectable value without typeId must be rejected (AC02).');
+}
+// AC10: a fresh node always starts as `unknown` — never a derived verdict.
+const wsIpNode = ws.nodes.find((node) => node.typeId === 'ip');
+if (!wsIpNode || wsIpNode.verdict !== 'unknown') {
+  throw new Error('Workspace: a fresh node must start with the "unknown" verdict (AC10).');
+}
+// Vocabularies exported for the future UI (AC05: every relation is typed).
+for (const required of ['resolves_to', 'certificate_contains', 'related_to']) {
+  if (!RELATIONSHIP_TYPES.includes(required)) {
+    throw new Error(`Workspace: RELATIONSHIP_TYPES must offer "${required}" (AC05).`);
+  }
+}
+if (
+  !WORKSPACE_NODE_TYPES.includes('certificate') ||
+  !INVESTIGATION_STATUSES.includes('in-progress') ||
+  !TIMELINE_EVENT_TYPES.includes('pivot_performed')
+) {
+  throw new Error('Workspace: exported vocabularies are incomplete.');
+}
+
+// AC05/AC06/AC12: typed relationships with provenance, merged evidence and
+// explicit rejection of malformed input.
+const wsDomainId = nodeIdOf('domain', 'evil.example.com');
+const wsIpId = nodeIdOf('ip', '203.0.113.24');
+const wsUrlId = nodeIdOf('url', 'https://evil.example.com/login');
+ws = addRelationship(
+  ws,
+  {
+    sourceId: wsUrlId,
+    targetId: wsDomainId,
+    type: 'host',
+    sourceType: 'derived',
+    sourceLabel: 'URL parsing',
+    observedAt: wsNow,
+  },
+  wsNow,
+);
+ws = addRelationship(
+  ws,
+  {
+    sourceId: wsDomainId,
+    targetId: wsIpId,
+    type: 'resolves_to',
+    sourceType: 'provider',
+    sourceLabel: 'Fast Analyze',
+    provider: 'rdap',
+    observedAt: wsNow,
+  },
+  wsNow,
+);
+if (ws.relationships.length !== 2) {
+  throw new Error(`Workspace: expected 2 relationships, got ${ws.relationships.length} (AC05).`);
+}
+const resolves = ws.relationships.find((rel) => rel.type === 'resolves_to');
+if (!resolves || resolves.sourceType !== 'provider' || resolves.provider !== 'rdap') {
+  throw new Error('Workspace: relationship provenance must be kept (AC06).');
+}
+// A second, different observation of the SAME link appends evidence — one edge,
+// several proofs (US V2 "Relations dupliquées" / "Evidence").
+ws = addRelationship(
+  ws,
+  {
+    sourceId: wsDomainId,
+    targetId: wsIpId,
+    type: 'resolves_to',
+    sourceType: 'analyst',
+    sourceLabel: 'Analyst',
+    confidence: 'suspected',
+    observedAt: '2026-09-24T15:00:00.000Z',
+  },
+  '2026-09-24T15:00:00.000Z',
+);
+const afterEvidence = ws.relationships.filter((rel) => rel.type === 'resolves_to');
+if (afterEvidence.length !== 1) {
+  throw new Error('Workspace: the same link must not duplicate the edge (AC05).');
+}
+if (afterEvidence[0].evidence.length !== 2) {
+  throw new Error(`Workspace: expected 2 evidence entries, got ${afterEvidence[0].evidence.length}.`);
+}
+if (afterEvidence[0].confidence !== 'observed') {
+  throw new Error('Workspace: an observed link must not downgrade to suspected.');
+}
+if (afterEvidence[0].observedAt !== '2026-09-24T15:00:00.000Z') {
+  throw new Error('Workspace: observedAt must reflect the latest observation.');
+}
+// Re-adding the exact same observation must not grow the evidence list.
+ws = addRelationship(
+  ws,
+  {
+    sourceId: wsDomainId,
+    targetId: wsIpId,
+    type: 'resolves_to',
+    sourceType: 'analyst',
+    sourceLabel: 'Analyst',
+    confidence: 'suspected',
+    observedAt: '2026-09-24T15:00:00.000Z',
+  },
+  '2026-09-24T15:30:00.000Z',
+);
+if (ws.relationships.find((rel) => rel.type === 'resolves_to').evidence.length !== 2) {
+  throw new Error('Workspace: an identical observation must not duplicate evidence.');
+}
+// AC12: a manual `related_to` link, source = analyst, confidence = suspected.
+const wsHashId = nodeIdOf('file', 'd41d8cd98f00b204e9800998ecf8427e');
+ws = addRelationship(
+  ws,
+  {
+    sourceId: wsIpId,
+    targetId: wsHashId,
+    type: 'related_to',
+    sourceType: 'analyst',
+    sourceLabel: 'Analyst',
+    confidence: 'suspected',
+    observedAt: wsNow,
+  },
+  wsNow,
+);
+const manual = ws.relationships.find((rel) => rel.type === 'related_to');
+if (!manual || manual.confidence !== 'suspected' || manual.sourceType !== 'analyst') {
+  throw new Error('Workspace: a manual relationship must keep source Analyst (AC12).');
+}
+// Boundary rejections: unknown endpoints, missing type, unknown provenance.
+for (const bad of [
+  () => addRelationship(ws, { sourceId: 'nope', targetId: wsIpId, type: 'host', sourceType: 'derived' }, wsNow),
+  () => addRelationship(ws, { sourceId: wsIpId, targetId: wsHashId, type: '  ', sourceType: 'analyst' }, wsNow),
+  () => addRelationship(ws, { sourceId: wsIpId, targetId: wsHashId, type: 'host', sourceType: /** @type {any} */ ('magic') }, wsNow),
+]) {
+  wsThrew = false;
+  try {
+    bad();
+  } catch {
+    wsThrew = true;
+  }
+  if (!wsThrew) {
+    throw new Error('Workspace: malformed relationships must be rejected (AC05/AC06).');
+  }
+}
+
+// AC10/AC11: verdict, notes and tags are analyst-only, verbatim, timeline-aware.
+const wsTimelineBefore = ws.timeline.length;
+ws = setNodeVerdict(ws, wsIpId, 'suspicious', '2026-09-24T16:00:00.000Z');
+const verdictNode = ws.nodes.find((node) => node.id === wsIpId);
+if (verdictNode.verdict !== 'suspicious') {
+  throw new Error('Workspace: the analyst verdict must be stored (AC10).');
+}
+if (!ws.timeline.some((event) => event.type === 'verdict_changed' && event.nodeId === wsIpId)) {
+  throw new Error('Workspace: a verdict change must appear on the timeline (AC15).');
+}
+wsThrew = false;
+try {
+  setNodeVerdict(ws, wsIpId, /** @type {any} */ ('safe'), wsNow);
+} catch {
+  wsThrew = true;
+}
+if (!wsThrew) {
+  throw new Error('Workspace: an unknown verdict must be rejected (AC10).');
+}
+// Storing provider results must never touch the verdict (AC10).
+ws = setNodeAnalysis(
+  ws,
+  wsIpId,
+  {
+    checkedAt: wsNow,
+    checks: [
+      { id: 'ip-intel', label: 'IP intelligence', toolId: 'ipapi-is', status: 'ok', ms: 12,
+        summary: null, fields: [{ label: 'ASN', value: 'AS12345' }], message: null },
+    ],
+  },
+  wsNow,
+);
+const analyzedNode = ws.nodes.find((node) => node.id === wsIpId);
+if (analyzedNode.verdict !== 'suspicious' || analyzedNode.analysis?.checks?.[0]?.id !== 'ip-intel') {
+  throw new Error('Workspace: analysis must be stored without changing the verdict (AC10).');
+}
+// Notes keep line breaks and spacing exactly (AC11).
+const multilineNote = 'IP observed in the first suspicious email.\nAlso present in proxy logs.\n  indented line';
+ws = setNodeNotes(ws, wsIpId, multilineNote, wsNow);
+ws = setInvestigationNotes(ws, 'Campaign reuses the same ASN.\nNeed to verify the second domain.', wsNow);
+const notedNode = ws.nodes.find((node) => node.id === wsIpId);
+if (notedNode.notes !== multilineNote || !ws.notes.includes('\nNeed to verify')) {
+  throw new Error('Workspace: notes must be stored verbatim (AC11).');
+}
+// Tags: investigation-level and node-level, normalized like V1.3 (AC11).
+ws = setInvestigationTags(ws, ['Phishing', 'phishing', 'September 2026'], wsNow);
+ws = setNodeTags(ws, wsDomainId, ['c2-candidate'], wsNow);
+if (ws.tags.join(',') !== 'phishing,september-2026') {
+  throw new Error(`Workspace: investigation tags must normalize+dedupe, got ${JSON.stringify(ws.tags)} (AC11).`);
+}
+if (ws.nodes.find((node) => node.id === wsDomainId).tags.join(',') !== 'c2-candidate') {
+  throw new Error('Workspace: node tags must be stored (AC11).');
+}
+// Status is an advancement marker (AC01/Overview), never a threat qualification.
+ws = setStatus(ws, 'in-progress', wsNow);
+if (ws.status !== 'in-progress') {
+  throw new Error('Workspace: status must be stored.');
+}
+wsThrew = false;
+try {
+  setStatus(ws, /** @type {any} */ ('done'), wsNow);
+} catch {
+  wsThrew = true;
+}
+if (!wsThrew) {
+  throw new Error('Workspace: an unknown status must be rejected.');
+}
+// AC17: dragged positions and hidden flags persist on the node.
+ws = setNodePosition(ws, wsIpId, { x: 120.5, y: -40 });
+const positioned = ws.nodes.find((node) => node.id === wsIpId);
+if (positioned.position?.x !== 120.5 || positioned.position?.y !== -40) {
+  throw new Error('Workspace: node positions must persist (AC17).');
+}
+ws = setNodeHidden(ws, wsHashId, true);
+if (!ws.nodes.find((node) => node.id === wsHashId).hidden) {
+  throw new Error('Workspace: hiding a node must persist without removing it.');
+}
+// Timeline: every significant action recorded with a unique id (AC15).
+const wsEventTypes = ws.timeline.map((event) => event.type);
+for (const expected of ['investigation_created', 'indicator_added', 'relationship_created', 'verdict_changed', 'note_added', 'analysis_completed']) {
+  if (!wsEventTypes.includes(expected)) {
+    throw new Error(`Workspace: timeline must record "${expected}" (AC15).`);
+  }
+}
+const wsEventIds = new Set(ws.timeline.map((event) => event.id));
+if (wsEventIds.size !== ws.timeline.length || ws.timeline.length <= wsTimelineBefore) {
+  throw new Error('Workspace: timeline event ids must be unique (AC15).');
+}
+ws = recordTimelineEvent(ws, { type: 'export_created', label: 'Export created (markdown)' }, null, wsNow);
+if (!ws.timeline.some((event) => event.type === 'export_created')) {
+  throw new Error('Workspace: recordTimelineEvent must accept later flows (AC15).');
+}
+
+// AC18/AC19: removing a node touches ONLY this workspace — the V1.3 global
+// history and other investigations stay byte-identical.
+const wsHistory = new InvestigationHistoryService(undefined, 'ioc-toolkit:ws-ac19-probe');
+wsHistory.upsert(
+  { id: wsIpId, typeId: 'ip', normalized: '203.0.113.24', defanged: '203[.]0[.]113[.]24' },
+  null,
+  'manual',
+);
+const wsOther = createInvestigation({ name: 'Unrelated case' }, wsNow);
+const wsOtherSnapshot = JSON.stringify(wsOther);
+const wsHistorySnapshot = JSON.stringify(wsHistory.list());
+const wsBeforeRemove = ws;
+ws = removeNode(ws, wsIpId, wsNow);
+if (ws.nodes.some((node) => node.id === wsIpId)) {
+  throw new Error('Workspace: removeNode must drop the node.');
+}
+if (ws.relationships.some((rel) => rel.sourceId === wsIpId || rel.targetId === wsIpId)) {
+  throw new Error('Workspace: removeNode must drop the relationships touching the node (AC18).');
+}
+if (!wsBeforeRemove.nodes.some((node) => node.id === wsIpId)) {
+  throw new Error('Workspace: removeNode must not mutate its input (immutable updates).');
+}
+if (JSON.stringify(wsOther) !== wsOtherSnapshot) {
+  throw new Error('Workspace: another investigation must stay untouched (AC18).');
+}
+if (JSON.stringify(wsHistory.list()) !== wsHistorySnapshot) {
+  throw new Error('Workspace: removing a node must never touch the V1.3 history (AC19).');
+}
+
+// AC16: persistence through the repository. The adapter is injected, so a NEW
+// repository over the same backend simulates "close then reopen the app".
+const wsAdapter = createMemoryWorkspaceAdapter();
+const wsRepo = new InvestigationRepository(wsAdapter);
+let wsNotifications = 0;
+const wsUnsubscribe = wsRepo.subscribe(() => {
+  wsNotifications += 1;
+});
+const wsSaved = await wsRepo.save(ws);
+if (wsSaved.id !== ws.id) {
+  throw new Error('Workspace: save must return the stored investigation (AC16).');
+}
+if (wsNotifications !== 1) {
+  throw new Error('Workspace: subscribers must be notified after a save.');
+}
+const wsFetched = await wsRepo.get(ws.id);
+if (!wsFetched || wsFetched.nodes.length !== ws.nodes.length ||
+    wsFetched.relationships.length !== ws.relationships.length) {
+  throw new Error('Workspace: a fresh repository must reload the investigation (AC16).');
+}
+const wsRepoAfterReload = new InvestigationRepository(wsAdapter);
+const wsListed = await wsRepoAfterReload.list();
+if (wsListed.length !== 1 || wsListed[0].id !== ws.id) {
+  throw new Error('Workspace: investigations must survive a repository restart (AC16).');
+}
+// Invalid payloads are rejected at the save boundary.
+wsThrew = false;
+try {
+  await wsRepo.save(/** @type {any} */ ({ id: 'x' }));
+} catch {
+  wsThrew = true;
+}
+if (!wsThrew) {
+  throw new Error('Workspace: saving a non-investigation must be rejected.');
+}
+// Removal returns false for an unknown id, true otherwise, and notifies.
+if (await wsRepo.remove('inv-does-not-exist')) {
+  throw new Error('Workspace: removing an unknown investigation must return false.');
+}
+if (!(await wsRepo.remove(ws.id)) || (await wsRepo.get(ws.id)) !== null) {
+  throw new Error('Workspace: remove must drop the investigation (AC16).');
+}
+wsUnsubscribe();
+if (wsNotifications !== 2) {
+  throw new Error(`Workspace: expected 2 notifications (1 save + 1 remove), got ${wsNotifications}.`);
+}
+// The V1.3 history probe above must still be intact after all of this (AC19).
+if (JSON.stringify(wsHistory.list()) !== wsHistorySnapshot) {
+  throw new Error('Workspace: repository operations must never touch the V1.3 history (AC19).');
+}
+// Sanitizer: corrupted / partial / hostile payloads never crash a reader (AC16).
+const wsGarbage = [
+  null,
+  42,
+  'string',
+  {},
+  { id: '', name: 'no id' },
+  { id: 'inv-ok', name: '' },
+  { id: 'inv-ok2', name: '   ' },
+];
+for (const garbage of wsGarbage) {
+  if (sanitizeInvestigation(garbage) !== null) {
+    throw new Error(`Workspace: sanitizeInvestigation must reject ${JSON.stringify(garbage)}.`);
+  }
+}
+const wsPartial = sanitizeInvestigation({
+  id: 'inv-partial',
+  name: 'Partial case',
+  status: 'unknown-status',
+  tags: 'not-an-array',
+  notes: 12345,
+  nodes: [
+    'junk',
+    { id: 'domain:evil.example.com', typeId: 'bogus-type', value: 'evil.example.com' },
+    { id: 'domain:evil.example.com', typeId: 'domain', value: 'evil.example.com', verdict: 'scary' },
+  ],
+  relationships: [
+    // Dangling: points at a node that was dropped → removed.
+    { id: 'a->b', sourceId: 'domain:evil.example.com', targetId: 'ghost:nowhere', type: 'resolves_to' },
+    { id: 'ok', sourceId: 'domain:evil.example.com', targetId: 'domain:evil.example.com',
+      type: 'related_to', confidence: 'weird', sourceType: 'nope', evidence: 'broken' },
+  ],
+  timeline: [{ id: 'e1', type: 'unknown_event', label: 'x', at: wsNow }, 'junk'],
+});
+if (!wsPartial || wsPartial.status !== 'open' || !Array.isArray(wsPartial.tags)) {
+  throw new Error('Workspace: a partial payload must sanitize to safe defaults (AC16).');
+}
+if (wsPartial.notes !== '' || wsPartial.nodes.length !== 1) {
+  throw new Error('Workspace: the sanitizer must drop invalid fields and nodes (AC16).');
+}
+if (wsPartial.nodes[0].verdict !== 'unknown' || wsPartial.nodes[0].defanged !== 'evil[.]example[.]com') {
+  throw new Error('Workspace: the sanitizer must reset an invalid verdict and recompute the defang.');
+}
+if (wsPartial.relationships.length !== 1) {
+  throw new Error('Workspace: dangling relationships must be dropped by the sanitizer.');
+}
+if (wsPartial.relationships[0].confidence !== 'suspected' ||
+    wsPartial.relationships[0].sourceType !== 'analyst' ||
+    !Array.isArray(wsPartial.relationships[0].evidence)) {
+  throw new Error('Workspace: the sanitizer must reset invalid relationship fields.');
+}
+if (wsPartial.timeline.length !== 0) {
+  throw new Error('Workspace: unknown timeline events must be dropped.');
+}
+// Memory adapter sanitizes its seed too; IndexedDB adapter returns null when
+// the factory is unavailable (Node test environment has no indexedDB).
+const wsSeeded = createMemoryWorkspaceAdapter([{ bogus: true }, ws]);
+if ((await wsSeeded.getAll()).length !== 1) {
+  throw new Error('Workspace: the memory adapter must sanitize its seed.');
+}
+if (createIndexedDbWorkspaceAdapter(null) !== null) {
+  throw new Error('Workspace: the IndexedDB adapter must fall back when unavailable.');
+}
+
+
+
 
 globalThis.fetch = originalFetch;
 

@@ -207,6 +207,29 @@ npm run preview   # serve the production build locally
 | [Have I Been Pwned](https://haveibeenpwned.com/) | Threat intelligence | Reference breach database (emails, domains, passwords) |
 | [UserSearch](https://usersearch.com/) | Threat intelligence | Username lookup across social networks & forums |
 
+## Investigation workspace (V2)
+
+The V2 workspace groups several indicators into a single *investigation* — nodes,
+typed relationships (with provenance and evidence), analyst verdicts, notes, tags
+and a local timeline — instead of isolated single-IoC entries.
+
+- **Lot 1 — data layer (implemented)**: the pure model
+  (`src/lib/services/workspace/investigation-model.js`) deduplicates nodes on
+  `typeId:normalized` (defanged/plain spellings collapse into one node), keeps
+  verdicts analyst-only, merges repeated observations of a relationship into one
+  edge carrying several evidence entries, and records significant actions on a
+  timeline. `InvestigationRepository` persists investigations in **IndexedDB**
+  (in-memory fallback) and is registered in the DI container as
+  `DI_TOKENS.investigationWorkspace`. Everything stays local — no network, no
+  backend — and removing a node never touches the V1.3 history;
+- **Next lots**: workspace UI (list, overview, native SVG graph, indicators,
+  timeline, notes), bounded pivots with selection before any graph expansion,
+  V1.3 history migration, V1.5 export of a workspace and JSON import.
+
+`npm run smoke` exercises creation, deduplication, provenance, evidence merging,
+analyst-only verdicts, verbatim notes, timeline, repository persistence and the
+storage sanitizer.
+
 ## Project structure
 
 ```
@@ -231,6 +254,10 @@ src/
       favorites.js                # starred tools persisted in localStorage
       download.js                 # Blob → local file download (US V1.5, no network)
       export/                     # US V1.5 export pipeline: model + Markdown/JSON/CSV formatters
+      investigation-history.js     # V1.3 per-IoC history (localStorage)
+      workspace/                   # US V2 investigation workspace (lot 1: data layer)
+        investigation-model.js         # pure model: nodes, relationships, evidence, timeline
+        investigation-repository.js    # IndexedDB persistence (memory fallback), DI-injected
     utils/                    # pure helpers (refang/defang, IoC extraction, batch analysis, filtering, colors)
     components/               # Svelte UI components
   App.svelte                  # page layout & state

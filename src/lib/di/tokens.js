@@ -13,4 +13,5 @@ export const DI_TOKENS = Object.freeze({
   healthCatalog: Symbol('di.healthCatalog'),
   fastAnalyzer: Symbol('di.fastAnalyzer'),
   investigations: Symbol('di.investigations'),
+  investigationWorkspace: Symbol('di.investigationWorkspace'),
 });

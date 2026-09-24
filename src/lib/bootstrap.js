@@ -7,6 +7,7 @@ import { DownloadService } from './services/download.js';
 import { FavoritesService } from './services/favorites.js';
 import { FastAnalyzerService } from './services/fast-analyze.js';
 import { InvestigationHistoryService } from './services/investigation-history.js';
+import { InvestigationRepository } from './services/workspace/investigation-repository.js';
 import { StaticToolDataSource } from './services/static-tool-data-source.js';
 import { ToolRepository } from './services/tool-repository.js';
 
@@ -51,6 +52,11 @@ export function createAppContainer() {
   // Local investigation history (analyst verdicts, tags, notes): browser
   // storage only, no account and no backend — same approach as the favorites.
   container.register(DI_TOKENS.investigations, () => new InvestigationHistoryService());
+
+  // V2 investigation workspace: whole investigations (nodes, relationships,
+  // timeline) persisted in IndexedDB with an in-memory fallback — still 100%
+  // local, no backend (US V2).
+  container.register(DI_TOKENS.investigationWorkspace, () => new InvestigationRepository());
 
   return container;
 }

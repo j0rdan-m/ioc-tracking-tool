@@ -221,5 +221,138 @@
  * @property {string | Date} [now] Generation date (injectable for tests).
  */
 
+/**
+ * V2 investigation workspace (US V2).
+ *
+ * An investigation groups indicators (`nodes`), their typed relationships, the
+ * analyst data and a timeline. The workspace — not the future graph component
+ * — is the source of truth.
+ */
+
+/**
+ * Analyst workflow state of an investigation. Describes the advancement of the
+ * work, never a threat qualification.
+ *
+ * @typedef {'open' | 'in-progress' | 'closed'} WorkspaceStatus
+ */
+
+/**
+ * Node types of the V2 graph (US V2 minimum + `username` so V1.3 history
+ * entries can migrate without a re-analysis). `file` is the catalog's hash
+ * type; `asn` and `certificate` exist only in the workspace.
+ *
+ * @typedef {'ip' | 'domain' | 'url' | 'email' | 'file' | 'asn' | 'certificate' | 'username'} WorkspaceNodeType
+ */
+
+/**
+ * One indicator / artifact of an investigation. Identity is
+ * `${typeId}:${normalized}` (`nodeIdOf()`), matching the V1.3 history key so
+ * refanged and defanged spellings collapse into one node (AC03).
+ *
+ * @typedef {Object} WorkspaceNode
+ * @property {string} id          Stable deduplication key (`typeId:normalized`).
+ * @property {WorkspaceNodeType} typeId Node type.
+ * @property {string} value       Normalized (exploitable) value.
+ * @property {string} defanged    Neutralized form shown in the UI.
+ * @property {string | null} raw   Value exactly as entered/found, when known.
+ * @property {InvestigationVerdict} verdict Analyst qualification only — never
+ *   derived from provider data (AC10).
+ * @property {string} notes       Verbatim analyst notes for this node (AC11).
+ * @property {InvestigationAnalysisSnapshot | null} analysis Latest provider
+ *   results (filled when an analysis is recorded on the node).
+ * @property {boolean} seed       True for the investigation's starting indicators.
+ * @property {number} depth       Hops from the nearest seed (0 = seed); caps automatic expansion.
+ * @property {string[]} tags      Investigation-level tags on the node (V2 AC11).
+ * @property {boolean} hidden     Hidden from the graph view without being removed.
+ * @property {{ x: number, y: number } | null} position Manually dragged layout
+ *   position, persisted so a reopened investigation keeps its layout (V2 AC17);
+ *   `null` = let the automatic layout place it.
+ * @property {string} addedAt     ISO date when the node joined the workspace.
+ */
+
+/**
+ * One proof that a relationship was observed (US V2 "Evidence"). Several
+ * entries may confirm the same relationship.
+ *
+ * @typedef {Object} RelationshipEvidence
+ * @property {RelationshipSourceType} sourceType Provenance kind (AC06).
+ * @property {string | null} sourceLabel Human label ("Fast Analyze", "Email
+ *   headers", "Analyst", "URL parsing").
+ * @property {string | null} provider Provider that produced it, when any.
+ * @property {string} observedAt ISO date of the observation.
+ */
+
+/**
+ * Measured link (`observed`) vs analyst hypothesis (`suspected`).
+ *
+ * @typedef {'observed' | 'suspected'} RelationshipConfidence
+ */
+
+/**
+ * Provenance kind of a relationship / evidence entry: provider answer,
+ * deterministic derivation from another node, or an analyst hand-made link.
+ *
+ * @typedef {'provider' | 'derived' | 'analyst'} RelationshipSourceType
+ */
+
+/**
+ * Typed, directed link between two nodes (AC05) keeping its provenance
+ * (AC06). Repeated observations of the same link merge into ONE relationship
+ * carrying several evidence entries instead of duplicating the edge.
+ *
+ * @typedef {Object} WorkspaceRelationship
+ * @property {string} id         Deduplication key (`sourceId->targetId:type`).
+ * @property {string} sourceId   Source node id.
+ * @property {string} targetId   Target node id.
+ * @property {string} type       Explicit relation type (see RELATIONSHIP_TYPES).
+ * @property {RelationshipConfidence} confidence `observed` vs `suspected`.
+ * @property {RelationshipSourceType} sourceType Provenance kind (AC06).
+ * @property {string | null} sourceLabel Human provenance label.
+ * @property {string | null} provider Provider id/tool when `sourceType` is `provider`.
+ * @property {string} observedAt ISO date of the latest observation.
+ * @property {RelationshipEvidence[]} evidence Every proof gathered for this link.
+ */
+
+/**
+ * Significant action of the investigation (AC15). The timeline records what
+ * happened, not raw provider payloads.
+ *
+ * @typedef {Object} TimelineEvent
+ * @property {string} id       Unique within the investigation.
+ * @property {TimelineEventType} type Event kind (see TIMELINE_EVENT_TYPES).
+ * @property {string} label    One-line description (defanged values only).
+ * @property {string | null} nodeId Related node, when any.
+ * @property {string} at       ISO date.
+ */
+
+/**
+ * One of the significant actions recorded on the timeline (AC15).
+ *
+ * @typedef {'investigation_created' | 'indicator_added' | 'indicator_removed'
+ *   | 'analysis_started' | 'analysis_completed' | 'pivot_performed'
+ *   | 'relationship_created' | 'verdict_changed' | 'note_added'
+ *   | 'export_created'} TimelineEventType
+ */
+
+/**
+ * V2 investigation workspace: the graph component only renders this data — it
+ * is never the source of truth, which keeps exports, tests and any future
+ * graph library interchangeable.
+ *
+ * @typedef {Object} WorkspaceInvestigation
+ * @property {string} id
+ * @property {string} name
+ * @property {string} description
+ * @property {WorkspaceStatus} status Analyst workflow state (`open` / `in-progress` / `closed`).
+ * @property {string[]} tags    Investigation-level tags (AC11).
+ * @property {string} notes     Global investigation notes, verbatim (AC11).
+ * @property {WorkspaceNode[]} nodes Indicators / artifacts (deduplicated, AC03).
+ * @property {WorkspaceRelationship[]} relationships Typed links with provenance (AC05/AC06).
+ * @property {TimelineEvent[]} timeline Significant actions, oldest first (AC15).
+ * @property {string} createdAt ISO date.
+ * @property {string} updatedAt ISO date of the last change.
+ */
+
 export {};
+
 
