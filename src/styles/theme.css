@@ -1,51 +1,48 @@
 /* ============================================================================
- * THEME — the single file to restyle the whole application.
+ * THEME — Premium Technical / Amber
  *
- * Everything the UI renders (colours, typography, corner radii, elevation,
- * spacing, dialog sizes, motion) is expressed through the custom properties
- * declared here. Components never hard-code a colour, a radius or a font size:
- * they consume these tokens, so editing a value below restyles every place it
- * is used — no component needs to be touched.
+ * Direction:
+ * - near-black graphite rather than blue SaaS navy
+ * - warm amber/copper accent rather than neon cyan
+ * - restrained elevation, almost no decorative glow
+ * - tighter, squarer geometry
+ * - status colours remain functional and distinct
+ * - category colours are deliberately desaturated
  *
- * How to use it:
- *   1. Change a *palette* value (set 1) to shift the whole look, or a
- *      *semantic* value (set 2) to retarget one role (e.g. borders only).
- *   2. Soft/translucent fills are derived with `color-mix()` from the colour
- *      they tint, so they follow automatically (an amber accent gives amber
- *      chips, amber focus rings, amber glows).
- *   3. Typography (set 3), shape (set 4), elevation (set 5), layout (set 6)
- *      and motion (set 7) are independent: changing the radius scale re-shapes
- *      every card, pill and input at once.
- *
- * The tokens are plain CSS custom properties: no build step, no preprocessor.
- * They can also be overridden at runtime (e.g. `:root` in DevTools, or a
- * media query for a light theme) without rebuilding.
+ * Components keep consuming the same tokens: this file can replace the
+ * existing theme without changing component CSS.
  * ========================================================================== */
 
 :root {
   color-scheme: dark;
 
   /* ---------------------------------------------------------------------- *
-   * 1. Palette — raw colours, no meaning attached.                          *
+   * 1. Palette — graphite + warm metal.                                     *
    * ---------------------------------------------------------------------- */
-  --palette-navy-950: #0b1120; /* page background */
-  --palette-navy-900: #121d38; /* inputs and sunken blocks */
-  --palette-navy-800: #18254a; /* raised surfaces: cards, dialogs */
-  --palette-navy-700: #24345c; /* borders */
-  --palette-ink-50: #e8eefc; /* primary text */
-  --palette-ink-400: #9fb0d0; /* secondary text */
-  --palette-slate-400: #94a3b8; /* neutral markers (dots, bars, counters) */
-  --palette-sky-400: #38bdf8; /* primary accent */
-  --palette-sky-500: #0ea5e9; /* primary accent, pressed/hover */
-  --palette-indigo-400: #818cf8; /* secondary accent, decoration only */
-  --palette-green-400: #4ade80; /* positive / observed fact */
-  --palette-jade-400: #3aff9c; /* high-tech green (hero title) */
-  --palette-red-400: #f87171; /* negative / error */
-  --palette-amber-400: #facc15; /* caution */
-  --palette-shadow: #020817; /* shadow and overlay tint */
+  --palette-navy-950: #090a0c; /* page background — carbon black */
+  --palette-navy-900: #101216; /* inputs and sunken blocks */
+  --palette-navy-800: #171a1f; /* raised surfaces: cards, dialogs */
+  --palette-navy-700: #2a2e35; /* borders */
+
+  --palette-ink-50: #f0eee8; /* warm off-white, primary text */
+  --palette-ink-400: #989b9f; /* secondary text */
+  --palette-slate-400: #777c83; /* neutral markers, counters */
+
+  /* Main product identity: clear orange / restrained copper. */
+  --palette-sky-400: #f28a2e; /* primary accent — clear technical orange */
+  --palette-sky-500: #d96c18; /* pressed / hover — deeper burnt orange */
+  --palette-indigo-400: #bd6530; /* secondary brand detail — restrained copper */
+
+  /* Functional state colours: deliberately quieter than neon. */
+  --palette-green-400: #66b58a; /* positive / observed fact */
+  --palette-jade-400: #f0a24a; /* retained token, warm orange rather than neon */
+  --palette-red-400: #cf6b67; /* negative / error */
+  --palette-amber-400: #e0a84f; /* caution */
+
+  --palette-shadow: #000000; /* shadow and overlay tint */
 
   /* ---------------------------------------------------------------------- *
-   * 2. Semantic colours — what each role means.                             *
+   * 2. Semantic colours.                                                    *
    * ---------------------------------------------------------------------- */
   --color-bg: var(--palette-navy-950);
   --color-surface: var(--palette-navy-900);
@@ -53,116 +50,133 @@
   --color-border: var(--palette-navy-700);
   --color-text: var(--palette-ink-50);
   --color-text-muted: var(--palette-ink-400);
+
   --color-accent: var(--palette-sky-400);
   --color-accent-strong: var(--palette-sky-500);
   --color-brand: var(--palette-indigo-400);
+
   --color-success: var(--palette-green-400);
   --color-danger: var(--palette-red-400);
   --color-warning: var(--palette-amber-400);
-  /* Hero <h1> colour: a neon, terminal-like green. */
-  --color-hero-title: var(--palette-jade-400);
-  /* Text/icon colour to place on a filled accent surface. */
-  --color-accent-contrast: #08131f;
 
-  /* Translucent roles: derived from the colour they tint. */
-  --color-overlay: color-mix(in srgb, var(--palette-shadow) 72%, transparent);
-  --color-surface-sunken: color-mix(in srgb, var(--palette-navy-800) 50%, transparent);
-  --color-accent-soft: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  --color-accent-soft-strong: color-mix(in srgb, var(--color-accent) 16%, transparent);
-  --color-accent-veil: color-mix(in srgb, var(--color-accent) 9%, transparent);
-  --color-brand-veil: color-mix(in srgb, var(--color-brand) 7%, transparent);
-  --color-success-soft: color-mix(in srgb, var(--color-success) 14%, transparent);
-  --color-danger-soft: color-mix(in srgb, var(--color-danger) 14%, transparent);
-  --color-warning-soft: color-mix(in srgb, var(--color-warning) 14%, transparent);
-  --color-neutral-soft: color-mix(in srgb, var(--palette-slate-400) 12%, transparent);
-  --color-neutral-faint: color-mix(in srgb, var(--palette-slate-400) 10%, transparent);
-  --color-neutral-chip: color-mix(in srgb, var(--palette-slate-400) 14%, transparent);
-  --color-neutral-track: color-mix(in srgb, var(--palette-slate-400) 18%, transparent);
-  --color-neutral-marker: color-mix(in srgb, var(--palette-slate-400) 70%, transparent);
-  --color-neutral-border: color-mix(in srgb, var(--palette-slate-400) 16%, transparent);
-  --color-success-border: color-mix(in srgb, var(--color-success) 50%, transparent);
-  --color-danger-soft-weak: color-mix(in srgb, var(--color-danger) 8%, transparent);
-  --color-danger-border: color-mix(in srgb, var(--color-danger) 50%, transparent);
-  --color-danger-border-strong: color-mix(in srgb, var(--color-danger) 40%, transparent);
-  --color-border-subtle: color-mix(in srgb, var(--color-border) 60%, transparent);
+  /* Hero title stays primarily typographic, not neon. */
+  --color-hero-title: var(--palette-ink-50);
 
-  /* Page backdrop: two coloured glows over the background colour. */
+  /* Dark text/icon colour on a filled orange surface. */
+  --color-accent-contrast: #160c05;
+
+  /* Translucent roles: subtle, low-chroma and functional. */
+  --color-overlay: color-mix(in srgb, var(--palette-shadow) 78%, transparent);
+  --color-surface-sunken: color-mix(in srgb, var(--palette-navy-900) 88%, black);
+
+  --color-accent-soft: color-mix(in srgb, var(--color-accent) 9%, transparent);
+  --color-accent-soft-strong: color-mix(in srgb, var(--color-accent) 14%, transparent);
+  --color-accent-veil: color-mix(in srgb, var(--color-accent) 5%, transparent);
+  --color-brand-veil: color-mix(in srgb, var(--color-brand) 3%, transparent);
+
+  --color-success-soft: color-mix(in srgb, var(--color-success) 10%, transparent);
+  --color-danger-soft: color-mix(in srgb, var(--color-danger) 10%, transparent);
+  --color-warning-soft: color-mix(in srgb, var(--color-warning) 10%, transparent);
+
+  --color-neutral-soft: color-mix(in srgb, var(--palette-slate-400) 9%, transparent);
+  --color-neutral-faint: color-mix(in srgb, var(--palette-slate-400) 6%, transparent);
+  --color-neutral-chip: color-mix(in srgb, var(--palette-slate-400) 10%, transparent);
+  --color-neutral-track: color-mix(in srgb, var(--palette-slate-400) 14%, transparent);
+  --color-neutral-marker: color-mix(in srgb, var(--palette-slate-400) 72%, transparent);
+  --color-neutral-border: color-mix(in srgb, var(--palette-slate-400) 18%, transparent);
+
+  --color-success-border: color-mix(in srgb, var(--color-success) 38%, transparent);
+  --color-danger-soft-weak: color-mix(in srgb, var(--color-danger) 6%, transparent);
+  --color-danger-border: color-mix(in srgb, var(--color-danger) 38%, transparent);
+  --color-danger-border-strong: color-mix(in srgb, var(--color-danger) 48%, transparent);
+  --color-border-subtle: color-mix(in srgb, var(--color-border) 68%, transparent);
+
+  /*
+   * Backdrop: almost flat. A small warm reflection at the top gives the UI an
+   * identity without the two large SaaS-style coloured glows.
+   */
   --gradient-app-bg:
-    radial-gradient(60rem 30rem at 85% -10%, var(--color-accent-veil), transparent 60%),
-    radial-gradient(50rem 26rem at 0% 0%, var(--color-brand-veil), transparent 55%),
-    var(--color-bg);
-
+    radial-gradient(48rem 20rem at 52% -12%, var(--color-accent-veil), transparent 68%),
+    linear-gradient(180deg, #0b0c0f 0%, var(--color-bg) 22rem);
 
   /* ---------------------------------------------------------------------- *
-   * 3. Typography — font stacks and the type scale.                         *
+   * 3. Typography — neutral body, technical mono for data.                  *
    * ---------------------------------------------------------------------- */
   --font-body:
-    ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
   --font-mono:
-    ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+    'IBM Plex Mono', 'Cascadia Code', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
+    'Liberation Mono', monospace;
 
-  --font-size-2xs: 0.72rem; /* badges, meta lines */
-  --font-size-xs: 0.8rem; /* secondary labels, hints */
-  --font-size-sm: 0.85rem; /* compact body text, buttons */
-  --font-size-base: 0.9rem; /* default body text */
+  --font-size-2xs: 0.7rem; /* badges, meta lines */
+  --font-size-xs: 0.78rem; /* secondary labels, hints */
+  --font-size-sm: 0.84rem; /* compact body text, buttons */
+  --font-size-base: 0.91rem; /* default body text */
   --font-size-md: 1rem; /* emphasised body text, icon buttons */
-  --font-size-lg: 1.15rem; /* card titles */
-  --font-size-xl: 1.25rem; /* dialog titles */
-  --font-size-hero: clamp(1.9rem, 4vw, 2.75rem); /* page title */
+  --font-size-lg: 1.12rem; /* card titles */
+  --font-size-xl: 1.28rem; /* dialog titles */
+  --font-size-hero: clamp(2rem, 4vw, 3rem); /* page title */
 
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
-  --line-height-body: 1.6;
-  --line-height-tight: 1.5;
-  --line-height-heading: 1.15;
+  --line-height-body: 1.58;
+  --line-height-tight: 1.42;
+  --line-height-heading: 1.08;
   --line-height-solid: 1;
 
-  --letter-spacing-tight: -0.01em;
-  --letter-spacing-tighter: -0.02em;
-  --letter-spacing-wide: 0.14em; /* uppercase eyebrows */
-  --letter-spacing-wider: 0.12em; /* uppercase card categories */
-  --letter-spacing-snug: 0.06em; /* compact uppercase labels */
+  --letter-spacing-tight: -0.015em;
+  --letter-spacing-tighter: -0.035em;
+  --letter-spacing-wide: 0.16em; /* uppercase eyebrows */
+  --letter-spacing-wider: 0.11em; /* uppercase card categories */
+  --letter-spacing-snug: 0.055em; /* compact uppercase labels */
 
   /* ---------------------------------------------------------------------- *
-   * 4. Shape — corner radii. One edit re-shapes cards, pills and inputs.    *
+   * 4. Shape — technical, compact, intentionally less rounded.              *
    * ---------------------------------------------------------------------- */
-  --radius-xs: 4px; /* inline type badges */
-  --radius-sm: 8px; /* sunken code/quote blocks */
-  --radius-md: 10px; /* inputs, buttons */
-  --radius-card: 8px; /* tool cards — half the panel/dialog radius */
-  --radius-lg: 16px; /* panels and dialogs */
-  --radius-pill: 999px; /* chips, filters, links-ish buttons */
+  --radius-xs: 2px; /* inline type badges */
+  --radius-sm: 3px; /* sunken code/quote blocks */
+  --radius-md: 4px; /* inputs, buttons */
+  --radius-card: 3px; /* tool cards */
+  --radius-lg: 6px; /* panels and dialogs */
+  --radius-pill: 4px; /* chips and filters: rectangular, not capsules */
   --radius-circle: 50%; /* status dots */
-  --border-width: 1px; /* stroke of every card, input and divider */
-  --border-width-strong: 2px; /* active tab underline / emphasised edge */
-  --card-lift: -3px; /* how far a card rises on hover */
-  --pill-padding-y: 0.1rem; /* vertical padding of chips, tags and counters */
-  --status-dot-size: 0.5rem; /* status/category markers */
-  --gauge-height: 0.4rem; /* batch progress bar */
+
+  --border-width: 1px;
+  --border-width-strong: 2px;
+  --card-lift: -1px; /* movement is deliberately restrained */
+  --pill-padding-y: 0.13rem;
+  --status-dot-size: 0.45rem;
+  --gauge-height: 0.3rem;
 
   /* ---------------------------------------------------------------------- *
-   * 5. Elevation & glows.                                                   *
+   * 5. Elevation & focus — shadow, not glow.                                *
    * ---------------------------------------------------------------------- */
-  --shadow-card: 0 12px 32px color-mix(in srgb, var(--palette-shadow) 45%, transparent);
-  --shadow-focus: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
-  --shadow-glow-success: 0 0 6px color-mix(in srgb, var(--color-success) 80%, transparent);
-  --shadow-glow-danger: 0 0 6px color-mix(in srgb, var(--color-danger) 80%, transparent);
-  /* Category-tinted glow: `--category-hue` is set per tool card. */
+  --shadow-card:
+    0 1px 0 color-mix(in srgb, white 4%, transparent),
+    0 14px 38px color-mix(in srgb, var(--palette-shadow) 44%, transparent);
+
+  --shadow-focus:
+    0 0 0 1px color-mix(in srgb, var(--color-accent) 72%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--color-accent) 8%, transparent);
+
+  /* Status emphasis remains visible, but loses the neon bloom. */
+  --shadow-glow-success: 0 0 0 1px color-mix(in srgb, var(--color-success) 38%, transparent);
+  --shadow-glow-danger: 0 0 0 1px color-mix(in srgb, var(--color-danger) 40%, transparent);
+
+  /* Category hue is an accent edge rather than a coloured aura. */
   --shadow-glow-category:
-    0 0 8px hsl(var(--category-hue) var(--category-saturation) var(--category-lightness) / 0.8);
+    0 0 0 1px hsl(var(--category-hue) var(--category-saturation) var(--category-lightness) / 0.2);
 
-  /* Disabled/loading affordances. */
-  --opacity-disabled: 0.55;
-  --opacity-dim: 0.6;
-  --opacity-pulse-min: 0.35;
+  --opacity-disabled: 0.48;
+  --opacity-dim: 0.58;
+  --opacity-pulse-min: 0.45;
 
   /* ---------------------------------------------------------------------- *
-   * 6. Layout — spacing scale, page and dialog geometry, stacking.          *
+   * 6. Layout — preserve current geometry and information density.           *
    * ---------------------------------------------------------------------- */
-  /* Spacing ladder, in 0.25rem (4px) steps up to 1rem then 0.5rem steps.
-     Padding/margin/gap declarations use these tokens only. */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -175,9 +189,9 @@
   --space-10: 3.5rem;
 
   --app-max-width: 68rem;
-  --modal-width-sm: 40rem; /* Fast analyze, Extract IoCs */
-  --modal-width-md: 52rem; /* Investigation history */
-  --modal-width-lg: 58rem; /* Email headers */
+  --modal-width-sm: 40rem;
+  --modal-width-md: 52rem;
+  --modal-width-lg: 58rem;
   --modal-width: var(--modal-width-sm);
   --modal-padding: var(--space-6);
   --modal-gap: 1rem;
@@ -187,27 +201,33 @@
   --z-modal: 50;
   --z-modal-content: 1;
 
-  --blur-backdrop: blur(4px);
-  --blur-header: blur(12px);
-  --header-veil: color-mix(in srgb, var(--color-bg) 85%, transparent);
+  --blur-backdrop: blur(3px);
+  --blur-header: blur(14px);
+  --header-veil: color-mix(in srgb, var(--color-bg) 78%, transparent);
 
   /* ---------------------------------------------------------------------- *
-   * 7. Motion — durations, easing and the composed transitions.             *
+   * 7. Motion — short and precise.                                          *
    * ---------------------------------------------------------------------- */
-  --duration-fast: 0.15s;
-  --duration-slow: 0.2s;
-  --ease-standard: ease;
+  --duration-fast: 0.12s;
+  --duration-slow: 0.16s;
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+
   --transition-colors:
     color var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard),
     background-color var(--duration-fast) var(--ease-standard);
+
   --transition-field:
     border-color var(--duration-fast) var(--ease-standard),
     box-shadow var(--duration-fast) var(--ease-standard);
+
   --transition-lift:
     transform var(--duration-slow) var(--ease-standard),
-    border-color var(--duration-slow) var(--ease-standard);
+    border-color var(--duration-slow) var(--ease-standard),
+    box-shadow var(--duration-slow) var(--ease-standard);
+
   --transition-width: width var(--duration-slow) var(--ease-standard);
+
   --transition-tap:
     color var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard),
@@ -215,13 +235,12 @@
     transform var(--duration-fast) var(--ease-standard);
 
   /* ---------------------------------------------------------------------- *
-   * 8. Category hues — strength of the decorative category colours.         *
-   *    The hue itself is supplied per card; these control its vividness.    *
+   * 8. Category hues — quieter so content wins over decoration.             *
    * ---------------------------------------------------------------------- */
-  --category-saturation: 80%;
-  --category-lightness: 60%;
-  --category-saturation-soft: 70%;
-  --category-lightness-soft: 55%;
-  --category-lightness-text: 72%;
-  --category-hue: 200; /* fallback for a card that sets no hue */
+  --category-saturation: 42%;
+  --category-lightness: 58%;
+  --category-saturation-soft: 34%;
+  --category-lightness-soft: 48%;
+  --category-lightness-text: 68%;
+  --category-hue: 38; /* warm amber fallback */
 }
