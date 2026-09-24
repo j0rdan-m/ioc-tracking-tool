@@ -31,6 +31,7 @@ import { INVESTIGATION_VERDICTS } from '../investigation-history.js';
  *
  * @typedef {import('../../types.js').WorkspaceInvestigation} WorkspaceInvestigation
  * @typedef {import('../../types.js').WorkspaceNode} WorkspaceNode
+ * @typedef {import('../../types.js').WorkspaceIndicatorInput} WorkspaceIndicatorInput
  * @typedef {import('../../types.js').WorkspaceNodeType} WorkspaceNodeType
  * @typedef {import('../../types.js').WorkspaceRelationship} WorkspaceRelationship
  * @typedef {import('../../types.js').RelationshipEvidence} RelationshipEvidence
@@ -40,6 +41,7 @@ import { INVESTIGATION_VERDICTS } from '../investigation-history.js';
  * @typedef {import('../../types.js').TimelineEventType} TimelineEventType
  * @typedef {import('../../types.js').WorkspaceStatus} WorkspaceStatus
  * @typedef {import('../../types.js').InvestigationVerdict} InvestigationVerdict
+ * @typedef {import('../../types.js').InvestigationSource} InvestigationSource
  * @typedef {import('../../types.js').InvestigationAnalysisSnapshot} InvestigationAnalysisSnapshot
  * @typedef {import('../../types.js').IocTypeId} IocTypeId
  */
@@ -81,6 +83,8 @@ export const RELATIONSHIP_TYPES = /** @type {const} */ ([
   'extracted_from',
   'host',
   'related_to',
+  'email_uses_domain',
+  'nameserver',
 ]);
 
 /** A relationship is either measured (`observed`) or an analyst hypothesis. */
@@ -298,7 +302,9 @@ export function createInvestigation(input, now = new Date().toISOString()) {
  *
  * @param {WorkspaceInvestigation} investigation
  * @param {{ value: string, typeId?: WorkspaceNodeType, seed?: boolean, depth?: number,
- *           raw?: string | null }} input `typeId` is auto-detected when omitted.
+ *           raw?: string | null, source?: InvestigationSource }} input
+ *   `typeId` is auto-detected when omitted; `source` records how the indicator
+ *   entered the workspace and is kept on the node for export/provenance.
  * @param {string} [now] ISO date (injectable for tests).
  * @returns {WorkspaceInvestigation}
  */
@@ -313,16 +319,17 @@ export function addNode(investigation, input, now = new Date().toISOString()) {
   const existing = investigation.nodes.find((node) => node.id === id);
   if (existing) {
     // AC03: same normalized indicator = same node. Never rewrite analyst data;
-    // only merge the structural hints (seed, depth) into the existing node.
+    // only merge structural/provenance hints into the existing node.
     const seed = existing.seed || input.seed === true;
     const depth =
       input.depth !== undefined && input.depth < existing.depth ? input.depth : existing.depth;
-    if (seed === existing.seed && depth === existing.depth) {
+    const source = existing.source ?? input.source ?? 'manual';
+    if (seed === existing.seed && depth === existing.depth && source === existing.source) {
       return investigation;
     }
     return {
       ...investigation,
-      nodes: investigation.nodes.map((node) => (node.id === id ? { ...node, seed, depth } : node)),
+      nodes: investigation.nodes.map((node) => (node.id === id ? { ...node, seed, depth, source } : node)),
       updatedAt: now,
     };
   }
@@ -333,6 +340,7 @@ export function addNode(investigation, input, now = new Date().toISOString()) {
     value,
     defanged: defangIoc(value, /** @type {IocTypeId} */ (typeId)),
     raw: typeof input.raw === 'string' && input.raw !== '' ? input.raw : String(input.value).trim(),
+    source: input.source ?? 'manual',
     // V2 AC10: a fresh node is always `unknown`; only the analyst changes it.
     verdict: 'unknown',
     notes: '',
@@ -853,6 +861,9 @@ function sanitizeNode(value) {
       ? value.defanged
       : defangIoc(value.value, /** @type {IocTypeId} */ (typeId)),
     raw: typeof value.raw === 'string' && value.raw !== '' ? value.raw : value.value,
+    source: ['manual', 'extracted-text', 'email-headers'].includes(value.source)
+      ? value.source
+      : 'manual',
     verdict: INVESTIGATION_VERDICTS.includes(value.verdict) ? value.verdict : 'unknown',
     notes: typeof value.notes === 'string' ? value.notes : '',
     analysis: isObject(value.analysis) && typeof value.analysis.checkedAt === 'string' &&

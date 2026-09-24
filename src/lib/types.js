@@ -186,6 +186,23 @@
  */
 
 /**
+ * Intake item accepted by the workspace helper. It can be an extracted IoC, a
+ * V1.3 history entry, or a small session-only object; the helper only consumes
+ * the fields it owns and never mutates the input.
+ *
+ * @typedef {Object} WorkspaceIndicatorInput
+ * @property {string} typeId IoC type identifier.
+ * @property {string} normalized Normalized value used as identity.
+ * @property {string} [raw] Original spelling, when known.
+ * @property {string} [defanged] Defanged spelling, when known.
+ * @property {InvestigationSource} [source] Intake provenance.
+ * @property {InvestigationVerdict} [verdict] Analyst qualification to preserve during migration.
+ * @property {string[]} [tags] Analyst tags to preserve during migration.
+ * @property {string} [notes] Analyst notes to preserve during migration.
+ * @property {InvestigationAnalysisSnapshot | null} [latestAnalysis] Latest provider snapshot.
+ */
+
+/**
  * Normalized input accepted by the export pipeline (US V1.5). A stored
  * `InvestigationEntry` satisfies it directly; session-only data (Fast analyze,
  * batch results not kept in the history) can be adapted by the caller with
@@ -255,6 +272,7 @@
  * @property {string} value       Normalized (exploitable) value.
  * @property {string} defanged    Neutralized form shown in the UI.
  * @property {string | null} raw   Value exactly as entered/found, when known.
+ * @property {InvestigationSource} source How the node entered the workspace.
  * @property {InvestigationVerdict} verdict Analyst qualification only — never
  *   derived from provider data (AC10).
  * @property {string} notes       Verbatim analyst notes for this node (AC11).

@@ -1,7 +1,7 @@
 <script>
   import GraphNodeDetails from './GraphNodeDetails.svelte';
   import GraphRelationDetails from './GraphRelationDetails.svelte';
-  import ExportPanel from './ExportPanel.svelte';
+  import WorkspaceExportPanel from './WorkspaceExportPanel.svelte';
   import InvestigationGraph from './InvestigationGraph.svelte';
   import InvestigationNotes from './InvestigationNotes.svelte';
   import InvestigationOverview from './InvestigationOverview.svelte';
@@ -10,6 +10,7 @@
     addNode,
     addRelationship,
     RELATIONSHIP_TYPES,
+    recordTimelineEvent,
     setInvestigationInfo,
     setInvestigationTags,
     setStatus,
@@ -60,26 +61,6 @@
     selectedRelationship
       ? investigation.nodes.find((node) => node.id === selectedRelationship.targetId) ?? null
       : null,
-  );
-
-  const exportInputs = $derived(
-    investigation.nodes.map((node) => ({
-      typeId: /** @type {import('../types.js').IocTypeId} */ (
-        ['ip', 'domain', 'url', 'email', 'file', 'username'].includes(node.typeId)
-          ? node.typeId
-          : 'file'
-      ),
-      normalized: node.value,
-      defanged: node.defanged,
-      raw: node.raw,
-      firstAnalyzedAt: node.addedAt,
-      lastAnalyzedAt: node.analysis?.checkedAt ?? node.addedAt,
-      verdict: node.verdict,
-      tags: node.tags,
-      notes: node.notes,
-      source: /** @type {import('../types.js').InvestigationSource} */ ('manual'),
-      latestAnalysis: node.analysis,
-    })),
   );
 
   $effect(() => {
@@ -218,7 +199,7 @@
 
   {#if error}<p class="workspace__error" role="alert">{error}</p>{/if}
   {#if showExport}
-    <ExportPanel investigations={exportInputs} {catalog} title="Export workspace" />
+    <WorkspaceExportPanel investigation={investigation} title="Export workspace" onExported={(format) => commit(recordTimelineEvent(investigation, { type: 'export_created', label: `Workspace exported (${format})` }, null))} />
   {/if}
 
   <nav class="tabs" aria-label="Investigation sections">

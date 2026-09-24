@@ -6,6 +6,7 @@
   import { analyzeHeaders } from '../utils/email-header-analyzer.js';
   import { extractIocs } from '../utils/extract-iocs.js';
   import { buildAnalysisSnapshot } from '../utils/history-filter.js';
+  import AddToInvestigation from './AddToInvestigation.svelte';
 
   /**
    * "Analyze email headers" modal: local RFC 5322 header parsing → auth
@@ -25,8 +26,22 @@
   const analyzer = inject(DI_TOKENS.fastAnalyzer);
   /** @type {import('../services/investigation-history.js').InvestigationHistoryService} */
   const history = inject(DI_TOKENS.investigations);
-
   let rawInput = $state('');
+  let showAddToInvestigation = $state(false);
+  /** @type {import('../types.js').WorkspaceIndicatorInput[]} */
+  let addToInvestigationInputs = $state([]);
+
+  function openAddToInvestigation(iocs) {
+    addToInvestigationInputs = iocs.map((ioc) => ({
+      typeId: ioc.typeId,
+      normalized: ioc.normalized,
+      raw: ioc.raw,
+      defanged: ioc.defanged,
+      source: 'email-headers',
+      latestAnalysis: history.get(ioc.id)?.latestAnalysis ?? null,
+    }));
+    showAddToInvestigation = true;
+  }
   /** @type {import('../utils/email-header-parser.js').ParsedEmailHeaders | null} */
   let parsed = $state(null);
   /** @type {import('../utils/email-header-analyzer.js').EmailHeaderAnalysis | null} */
@@ -178,7 +193,7 @@
         continue;
       }
       recordedIds.add(row.ioc.id);
-      history.upsert(row.ioc, buildAnalysisSnapshot(row.checkStates, new Date().toISOString()));
+      history.upsert(row.ioc, buildAnalysisSnapshot(row.checkStates, new Date().toISOString()), 'email-headers');
     }
   }
 
@@ -270,6 +285,7 @@
     analysis = null;
     selectedIds = [];
     selectAll = false;
+    showAddToInvestigation = false;
     activeTab = 'summary';
     feedback = '';
   }
@@ -280,6 +296,7 @@
     // only the explicit "Clear headers" action discards them.
     batchRun?.stop();
     open = false;
+    showAddToInvestigation = false;
   }
 
   function formatDate(iso) {
@@ -682,6 +699,7 @@
               <div class="eh__selbar">
                 <span class="eh__count">{selectedCount} of {publicIocs.length} selected</span>
                 <button class="eh__btn" onclick={toggleSelectAll}>{selectedCount === publicIocs.length ? 'Deselect all' : 'Select all'}</button>
+                <button class="eh__btn" onclick={() => openAddToInvestigation(publicIocs.filter((ioc) => selectedIds.includes(ioc.id)))} disabled={selectedCount === 0}>🕸 Add selected to investigation</button>
                 <button
                   class="eh__btn eh__btn--primary"
                   disabled={selectedCount === 0 || analysisRunning}
@@ -708,6 +726,7 @@
                     <div class="eh__actions">
                       <button class="eh__btn eh__btn--copy" title="Copy normalized" onclick={() => copyText(ioc.normalized)}>Copy</button>
                       <button class="eh__btn eh__btn--copy" title="Copy defanged" onclick={() => copyText(ioc.defanged)}>Defang</button>
+                      <button class="eh__btn eh__btn--copy" onclick={() => openAddToInvestigation([ioc])}>🕸 Add</button>
                       {#if analyzableTypes.has(ioc.typeId)}
                         <button class="eh__btn eh__btn--primary" title="Open Fast analyze seeded with the normalized value" onclick={() => analyzeSingle(ioc)}>
                           ⚡ Fast analyze
@@ -845,6 +864,9 @@
       {/if}
     </div>
 
+      {#if showAddToInvestigation}
+        <AddToInvestigation bind:open={showAddToInvestigation} indicators={addToInvestigationInputs} source="email-headers" />
+      {/if}
       <footer class="modal__foot">
         <button class="eh__btn" onclick={handleClear}>Clear headers</button>
         {#if feedback === 'saved'}<span class="eh__feedback">Saved locally</span>{/if}

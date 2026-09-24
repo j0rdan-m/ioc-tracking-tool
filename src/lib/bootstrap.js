@@ -8,6 +8,8 @@ import { FavoritesService } from './services/favorites.js';
 import { FastAnalyzerService } from './services/fast-analyze.js';
 import { InvestigationHistoryService } from './services/investigation-history.js';
 import { InvestigationRepository } from './services/workspace/investigation-repository.js';
+import { WorkspacePivotService } from './services/workspace/pivot-service.js';
+import { parseWorkspaceImport } from './services/workspace/import.js';
 import { StaticToolDataSource } from './services/static-tool-data-source.js';
 import { ToolRepository } from './services/tool-repository.js';
 
@@ -57,6 +59,15 @@ export function createAppContainer() {
   // timeline) persisted in IndexedDB with an in-memory fallback — still 100%
   // local, no backend (US V2).
   container.register(DI_TOKENS.investigationWorkspace, () => new InvestigationRepository());
+
+  // Explicit, bounded pivots: the service is pure orchestration and receives
+  // the existing analyzer through DI; components do not import it directly.
+  container.register(
+    DI_TOKENS.workspacePivot,
+    (container) => new WorkspacePivotService(container.resolve(DI_TOKENS.fastAnalyzer)),
+  );
+
+  container.register(DI_TOKENS.investigationImport, () => ({ parse: parseWorkspaceImport }));
 
   return container;
 }

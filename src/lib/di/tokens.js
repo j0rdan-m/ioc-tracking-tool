@@ -14,4 +14,6 @@ export const DI_TOKENS = Object.freeze({
   fastAnalyzer: Symbol('di.fastAnalyzer'),
   investigations: Symbol('di.investigations'),
   investigationWorkspace: Symbol('di.investigationWorkspace'),
+  workspacePivot: Symbol('di.workspacePivot'),
+  investigationImport: Symbol('di.investigationImport'),
 });

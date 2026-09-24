@@ -229,8 +229,20 @@ and a local timeline — instead of isolated single-IoC entries.
   relationships, set verdicts and edit verbatim notes; the existing `ExportPanel` can export the
   workspace's available indicator data locally in Markdown, JSON or CSV. The workspace remains
   IndexedDB-backed with an in-memory fallback and is opened from the toolbar's **🕸 Workspace** action;
-- **Next lots**: bounded pivots with selection before any graph expansion, V1.3 history migration,
-  V1.5 workspace-specific export metadata and JSON import.
+- **Lot 3 — pivots, intake et traçabilité (implemented)**: an explicit, bounded
+  `WorkspacePivotService` calls only the existing keyless checks, caps provider
+  requests, candidates and depth, and returns a selection list before any graph
+  expansion. URL/email intake creates deterministic `host` / `email_uses_domain`
+  edges. The same **Add to investigation** action is available from Extract IoCs,
+  Email Headers, Fast Analyze and History; extracted indicators are seeds and
+  preserve their provenance without changing the global history. Workspace JSON
+  export includes nodes, typed relationships, evidence and timeline; a local JSON
+  import restores the generated document without a network request;
+- **Validation (implemented)**: `npm run smoke`, `npm run check`, `npm run theme`
+  and `npm run build` all pass. The smoke suite covers intake deduplication,
+  pivot limits and selection, CSV escaping, workspace round-trip and malformed
+  import rejection. Raw provider responses remain unavailable because the app
+  does not retain them yet; the V1.5 raw option therefore remains `null`.
 
 `npm run smoke` exercises creation, deduplication, provenance, evidence merging,
 analyst-only verdicts, verbatim notes, timeline, repository persistence and the
@@ -259,11 +271,14 @@ src/
       clipboard.js                # copy-to-clipboard with legacy fallback
       favorites.js                # starred tools persisted in localStorage
       download.js                 # Blob → local file download (US V1.5, no network)
-      export/                     # US V1.5 export pipeline: model + Markdown/JSON/CSV formatters
+      export/                     # US V1.5 + V2 export pipelines (Markdown/JSON/CSV)
       investigation-history.js     # V1.3 per-IoC history (localStorage)
-      workspace/                   # US V2 investigation workspace (lot 1: data layer)
+      workspace/                   # US V2 investigation workspace
         investigation-model.js         # pure model: nodes, relationships, evidence, timeline
         investigation-repository.js    # IndexedDB persistence (memory fallback), DI-injected
+        intake.js                      # extracted/history indicators → local investigation
+        pivot-service.js               # explicit, bounded provider pivot discovery
+        import.js                      # local JSON workspace import boundary
     utils/                    # pure helpers (refang/defang, IoC extraction, batch analysis, filtering, colors)
     components/               # Svelte UI components
   App.svelte                  # page layout & state

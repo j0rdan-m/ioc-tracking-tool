@@ -6,6 +6,7 @@
   import { getDeepLinks } from '../utils/deep-links.js';
   import { formatTimestamp } from '../utils/format-timestamp.js';
   import { collectTags, filterInvestigations, normalizeTag } from '../utils/history-filter.js';
+  import AddToInvestigation from './AddToInvestigation.svelte';
 
   /**
    * "History" modal: the local investigation notebook. It lists the indicators
@@ -45,6 +46,9 @@
   let confirmClear = $state(false);
   let showLinks = $state(false);
   let showExport = $state(false);
+  let showAddToInvestigation = $state(false);
+  /** @type {import('../types.js').WorkspaceIndicatorInput[]} */
+  let addToInvestigationInputs = $state([]);
   let exportIds = $state(/** @type {string[]} */ ([]));
 
   /** @type {HTMLInputElement | undefined} */
@@ -127,9 +131,22 @@
     entries.filter((entry) => exportIds.includes(entry.id)),
   );
 
-  /**
-   * @param {string} message
-   */
+  function openAddToInvestigation(entries) {
+    addToInvestigationInputs = entries.map((entry) => ({
+      typeId: entry.typeId,
+      normalized: entry.normalized,
+      raw: entry.normalized,
+      defanged: entry.defanged,
+      source: entry.source ?? 'manual',
+      verdict: entry.verdict,
+      tags: entry.tags,
+      notes: entry.notes,
+      latestAnalysis: entry.latestAnalysis,
+    }));
+    showAddToInvestigation = true;
+  }
+
+  /** @param {string} message */
   function flash(message) {
     feedback = message;
     clearTimeout(feedbackTimer);
@@ -145,6 +162,7 @@
     pendingDelete = false;
     showLinks = false;
     showExport = false;
+    showAddToInvestigation = false;
   }
 
   function backToList() {
@@ -153,6 +171,7 @@
     pendingDelete = false;
     confirmClear = false;
     showExport = false;
+    showAddToInvestigation = false;
   }
 
   /** Tool lookup so a stored check links back to its catalog tool. */
@@ -475,6 +494,7 @@
                 aria-expanded={showExport}
                 onclick={() => (showExport = !showExport)}>Export</button
               >
+              <button type="button" class="hist__secondary" onclick={() => openAddToInvestigation([selected])}>🕸 Add to investigation</button>
               <button
                 type="button"
                 class="hist__secondary"
@@ -602,6 +622,7 @@
                 Export selected
               </button>
             {/if}
+               <button type="button" class="hist__secondary" disabled={exportIds.length === 0} onclick={() => openAddToInvestigation(exportSelection)}>🕸 Add selected to investigation</button>
             {#if entries.length > 0}
               <button type="button" class="hist__danger" onclick={() => (confirmClear = true)}>
                 Clear history
@@ -690,6 +711,7 @@
         Everything here lives in this browser only. Clearing the history never touches the catalog
         favorites.
       </p>
+       <AddToInvestigation bind:open={showAddToInvestigation} indicators={addToInvestigationInputs} source="manual" />
     </div>
   </div>
 {/if}

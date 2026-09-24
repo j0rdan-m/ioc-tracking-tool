@@ -7,6 +7,7 @@
   import { getDeepLinks } from '../utils/deep-links.js';
   import { buildAnalysisSnapshot } from '../utils/history-filter.js';
   import { defangIoc, normalizeIoc } from '../utils/refang.js';
+  import AddToInvestigation from './AddToInvestigation.svelte';
 
   /**
    * "Fast analyze" modal: paste an IoC, hit Start, and the free unauthenticated
@@ -38,6 +39,9 @@
   let finishedAt = $state('');
   let submittedRaw = $state('');
   let showExport = $state(false);
+  let showAddToInvestigation = $state(false);
+  /** @type {import('../types.js').WorkspaceIndicatorInput[]} */
+  let addToInvestigationInputs = $state([]);
 
   /**
    * One entry per check of the current run, updated in place as the promises
@@ -88,6 +92,7 @@
 
   function close() {
     open = false;
+    showAddToInvestigation = false;
   }
 
   /** @param {KeyboardEvent} event */
@@ -105,6 +110,7 @@
     submittedRaw = '';
     finishedAt = '';
     showExport = false;
+    showAddToInvestigation = false;
     checks = [];
     notice = '';
   }
@@ -222,6 +228,19 @@
     };
   }
   const sessionExport = $derived(buildSessionExport());
+
+  function openAddToInvestigation(input) {
+    if (!input) return;
+    addToInvestigationInputs = [{
+      typeId: input.typeId,
+      normalized: input.normalized,
+      defanged: input.defanged,
+      raw: input.raw,
+      source: 'manual',
+      latestAnalysis: input.latestAnalysis,
+    }];
+    showAddToInvestigation = true;
+  }
 
   /** @param {string} iocType @returns {string} */
   function iocLabel(iocType) {
@@ -368,6 +387,7 @@
 
       {#if sessionExport}
         <div class="export__trigger">
+          <button type="button" class="fast__export" onclick={() => openAddToInvestigation(sessionExport)}>🕸 Add to investigation</button>
           <button
             type="button"
             class="fast__export"
@@ -378,6 +398,7 @@
         {#if showExport}
           <ExportPanel investigations={[sessionExport]} {catalog} title="Export investigation" />
         {/if}
+        <AddToInvestigation bind:open={showAddToInvestigation} indicators={addToInvestigationInputs} source="manual" />
       {/if}
 
       <p class="modal__foot">

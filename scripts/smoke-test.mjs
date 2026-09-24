@@ -71,6 +71,10 @@ import {
   createMemoryWorkspaceAdapter,
 } from '../src/lib/services/workspace/investigation-repository.js';
 import { InvestigationHistoryService } from '../src/lib/services/investigation-history.js';
+import { addIndicatorsToInvestigation, applyPivotCandidates } from '../src/lib/services/workspace/intake.js';
+import { WorkspacePivotService, PIVOT_LIMITS } from '../src/lib/services/workspace/pivot-service.js';
+import { exportWorkspaceInvestigation } from '../src/lib/services/export/workspace-exporter.js';
+import { parseWorkspaceImport } from '../src/lib/services/workspace/import.js';
 
 const catalogPath = new URL('../src/data/tools.json', import.meta.url);
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
@@ -1865,6 +1869,63 @@ const editedInfo = setInvestigationInfo(ws, { name: 'Renamed case', description:
 if (editedInfo.name !== 'Renamed case' || editedInfo.description !== 'Updated context' || editedInfo === ws) {
   throw new Error('Workspace model: investigation metadata must be editable immutably.');
 }
+
+// --- V2 lot 3: intake and bounded pivots -----------------------------------
+const intakeInputs = [
+  { typeId: 'domain', normalized: 'evil.example.com', raw: 'evil[.]example[.]com', source: 'extracted-text' },
+  { typeId: 'url', normalized: 'https://evil.example.com/login', raw: 'hxxps://evil[.]example[.]com/login', source: 'extracted-text' },
+  { typeId: 'ip', normalized: '192.0.2.44', source: 'email-headers', verdict: 'suspicious', notes: 'Line one\nLine two', tags: ['customer-incident'] },
+];
+const intakeInputsBefore = JSON.stringify(intakeInputs);
+const intakeCase = addIndicatorsToInvestigation(createInvestigation({ name: 'Intake case' }, wsNow), intakeInputs, { now: wsNow });
+if (intakeCase.nodes.length !== 3 || intakeCase.relationships.length !== 1) throw new Error('Workspace intake: indicators and host relation must be added.');
+if (JSON.stringify(intakeInputs) !== intakeInputsBefore) throw new Error('Workspace intake: inputs must not be mutated.');
+const intakeDomain = intakeCase.nodes.find((node) => node.id === 'domain:evil.example.com');
+const intakeIp = intakeCase.nodes.find((node) => node.id === 'ip:192.0.2.44');
+if (intakeDomain?.source !== 'extracted-text' || intakeIp?.verdict !== 'suspicious' || intakeIp.notes !== 'Line one\nLine two') throw new Error('Workspace intake: provenance and analyst fields must be preserved.');
+if (intakeCase.relationships[0]?.type !== 'host' || intakeCase.relationships[0]?.sourceType !== 'derived') throw new Error('Workspace intake: host relation must be attributed.');
+
+let pivotCalls = 0;
+const fakePivotAnalyzer = { getChecks() { pivotCalls += 1; return [{ id: 'fake-asn', label: 'Fake ASN', toolId: 'fake-provider', run: async () => ({ status: 'ok', summary: null, fields: [{ label: 'ASN', value: 'AS64500' }], message: null }) }]; } };
+const pivotService = new WorkspacePivotService(fakePivotAnalyzer, { limits: { ...PIVOT_LIMITS, maxCandidates: 1, maxProviderRequests: 1 } });
+const pivotBase = addNode(createInvestigation({ name: 'Pivot case' }, wsNow), { value: '192.0.2.45', seed: true }, wsNow);
+const pivotNode = pivotBase.nodes[0];
+const pivotBefore = JSON.stringify(pivotBase);
+const pivotResult = await pivotService.discover(pivotNode);
+if (pivotCalls !== 1 || pivotResult.candidates[0]?.value !== 'AS64500') throw new Error('Workspace pivot: discovery must return provider candidates.');
+if (JSON.stringify(pivotBase) !== pivotBefore) throw new Error('Workspace pivot: discovery must not expand before selection.');
+const pivotApplied = applyPivotCandidates(pivotBase, pivotNode.id, pivotResult.candidates, wsNow);
+if (pivotApplied.nodes.length !== 2 || !pivotApplied.relationships.some((relationship) => relationship.type === 'announced_by' && relationship.sourceType === 'provider')) throw new Error('Workspace pivot: selected candidates must add typed relations.');
+const pivotDepth = await pivotService.discover({ ...pivotNode, depth: PIVOT_LIMITS.maxDepth });
+if (!pivotDepth.limited || pivotDepth.candidates.length !== 0 || pivotCalls !== 1) throw new Error('Workspace pivot: depth limit must stop provider requests.');
+
+// --- V2 lot 3: workspace export/import --------------------------------------
+let exportCase = createInvestigation({ name: 'Export case', description: 'Local report' }, wsNow);
+exportCase = addNode(exportCase, { value: 'evil.example.com', seed: true }, wsNow);
+exportCase = addNode(exportCase, { value: '192.0.2.46', seed: true }, wsNow);
+exportCase = addRelationship(exportCase, {
+  sourceId: 'domain:evil.example.com', targetId: 'ip:192.0.2.46', type: 'resolves_to',
+  sourceType: 'provider', sourceLabel: 'Fake provider', provider: 'fake-provider', observedAt: wsNow,
+}, wsNow);
+exportCase = setNodeNotes(exportCase, 'domain:evil.example.com', 'Comma, quote " and\nline break', wsNow);
+exportCase = setNodeAnalysis(exportCase, 'ip:192.0.2.46', {
+  checkedAt: wsNow,
+  checks: [{ id: 'fake', label: 'Fake check', toolId: 'fake-provider', status: 'ok', summary: 'OK', fields: [{ label: 'Country', value: 'FR' }], message: null }],
+}, wsNow);
+exportCase = setInvestigationNotes(exportCase, 'Campaign note\nwith a line break', wsNow);
+const workspaceJson = exportWorkspaceInvestigation(exportCase, 'json', { now: wsNow });
+const workspaceJsonPayload = JSON.parse(workspaceJson.content);
+if (workspaceJsonPayload.generatedAt !== wsNow || workspaceJsonPayload.investigation.nodes.length !== 2) throw new Error('Workspace export: JSON must preserve the investigation.');
+const workspaceMarkdown = exportWorkspaceInvestigation(exportCase, 'markdown', { now: wsNow });
+if (!workspaceMarkdown.content.includes('`evil[.]example[.]com`') || !workspaceMarkdown.content.includes('Fake provider')) throw new Error('Workspace export: Markdown must include defanged values and provenance.');
+if (/\]\(https?:\/\//i.test(workspaceMarkdown.content)) throw new Error('Workspace export: Markdown must not create active indicator links.');
+const workspaceCsv = exportWorkspaceInvestigation(exportCase, 'csv', { now: wsNow });
+if (!workspaceCsv.content.includes('"Comma, quote "" and\nline break"')) throw new Error('Workspace export: CSV must escape commas, quotes and line breaks.');
+const importedWorkspace = parseWorkspaceImport(workspaceJson.content);
+if (importedWorkspace.investigation.id !== exportCase.id || importedWorkspace.investigation.relationships.length !== 1 || importedWorkspace.generatedAt !== wsNow) throw new Error('Workspace import: generated JSON must round-trip locally.');
+let importRejected = false;
+try { parseWorkspaceImport('{not-json'); } catch { importRejected = true; }
+if (!importRejected) throw new Error('Workspace import: malformed JSON must be rejected.');
 
 globalThis.fetch = originalFetch;
 

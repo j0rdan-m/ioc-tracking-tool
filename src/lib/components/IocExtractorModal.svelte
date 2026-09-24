@@ -2,6 +2,7 @@
   import { inject } from '../di/provide.js';
   import { DI_TOKENS } from '../di/tokens.js';
   import ExportPanel from './ExportPanel.svelte';
+  import AddToInvestigation from './AddToInvestigation.svelte';
   import { computeBatchStatus, runBatchAnalysis } from '../utils/batch-analyze.js';
   import { extractIocs } from '../utils/extract-iocs.js';
   import { getDeepLinks } from '../utils/deep-links.js';
@@ -210,6 +211,18 @@
       : [...selectedIds, id];
   }
 
+  function openAddToInvestigation(iocs) {
+    addToInvestigationInputs = iocs.map((ioc) => ({
+      typeId: ioc.typeId,
+      normalized: ioc.normalized,
+      raw: ioc.raw,
+      defanged: ioc.defanged,
+      source: 'extracted-text',
+      latestAnalysis: history.get(ioc.id)?.latestAnalysis ?? null,
+    }));
+    showAddToInvestigation = true;
+  }
+
   function selectAll() {
     selectedIds = (result?.iocs ?? []).map((ioc) => ioc.id);
   }
@@ -229,6 +242,9 @@
   /** @type {Set<string>} */
   const recordedIds = new Set();
   let showBatchExport = $state(false);
+  let showAddToInvestigation = $state(false);
+  /** @type {import('../types.js').WorkspaceIndicatorInput[]} */
+  let addToInvestigationInputs = $state([]);
   let batchFinishedAt = $state('');
 
   /**
@@ -388,6 +404,7 @@
     selectedIds = result.iocs.map((ioc) => ioc.id);
     batchRows = [];
     detailIds = [];
+    showAddToInvestigation = false;
     analysisRunning = false;
     stopping = false;
   }
@@ -401,6 +418,7 @@
     selectedIds = [];
     batchRows = [];
     detailIds = [];
+    showAddToInvestigation = false;
     analysisRunning = false;
     stopping = false;
   }
@@ -430,6 +448,7 @@
     // opening.
     batchRun?.stop();
     open = false;
+    showAddToInvestigation = false;
   }
 
   /** @param {KeyboardEvent} event */
@@ -531,6 +550,12 @@
             </span>
             <button type="button" class="ioc__copy" onclick={selectAll}>Select all</button>
             <button type="button" class="ioc__copy" onclick={deselectAll}>Deselect all</button>
+             <button
+               type="button"
+               class="ioc__copy"
+               disabled={selectedIds.length === 0}
+               onclick={() => openAddToInvestigation((result?.iocs ?? []).filter((ioc) => selectedIds.includes(ioc.id)))}
+             >🕸 Add selected to investigation</button>
             <button
               type="button"
               class="ioc__analyze"
@@ -586,6 +611,7 @@
                     >
                       {savedKey === ioc.id ? 'Saved locally ✓' : '🗒 Save to history'}
                     </button>
+                     <button type="button" class="ioc__copy" onclick={() => openAddToInvestigation([ioc])}>🕸 Add to investigation</button>
                     {#if analyzableTypes.has(ioc.typeId)}
                       <button
                         type="button"
@@ -823,6 +849,9 @@
             </section>
           {/if}
         {/if}
+      {/if}
+      {#if showAddToInvestigation}
+        <AddToInvestigation bind:open={showAddToInvestigation} indicators={addToInvestigationInputs} source="extracted-text" />
       {/if}
       <p class="modal__foot">
         Extraction runs entirely in this browser: the pasted text is never sent to any API. External

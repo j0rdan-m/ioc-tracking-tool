@@ -17,6 +17,24 @@
 
   /** @type {import('../services/workspace/investigation-repository.js').InvestigationRepository} */
   const repository = inject(DI_TOKENS.investigationWorkspace);
+  const importer = inject(DI_TOKENS.investigationImport);
+  let importInput = $state(/** @type {HTMLInputElement | undefined} */ (undefined));
+
+  async function handleImport(event) {
+    const file = event.currentTarget.files?.[0];
+    if (!file) return;
+    try {
+      const parsed = importer.parse(await file.text());
+      const saved = await repository.save(parsed.investigation);
+      investigations = await repository.list();
+      selectedId = saved.id;
+      flash(`Imported ${saved.name} locally ✓`);
+    } catch (cause) {
+      flash(cause instanceof Error ? cause.message : 'Could not import the investigation.');
+    } finally {
+      if (importInput) importInput.value = '';
+    }
+  }
 
   /** @type {import('../types.js').WorkspaceInvestigation[]} */
   let investigations = $state([]);
@@ -121,6 +139,11 @@
       {#if feedback}
         <p class="workspace-modal__feedback" role="status">{feedback}</p>
       {/if}
+      <div class="workspace-import">
+        <button type="button" onclick={() => importInput?.click()}>⬆ Import JSON</button>
+        <input bind:this={importInput} type="file" accept="application/json,.json" onchange={handleImport} aria-label="Import investigation JSON" />
+        <span>Local JSON only — no upload.</span>
+      </div>
 
       {#if selected}
         <InvestigationWorkspace
@@ -159,4 +182,27 @@
     border: var(--border-width) solid var(--color-success-border);
     border-radius: var(--radius-md);
   }
+
+  .workspace-import {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+  }
+
+  .workspace-import button {
+    padding: var(--space-2) var(--space-3);
+    font: inherit;
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-muted);
+    background: transparent;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+  }
+
+  .workspace-import input { display: none; }
 </style>

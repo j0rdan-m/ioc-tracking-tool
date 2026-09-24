@@ -7,6 +7,7 @@
     setNodeNotes,
     setNodeVerdict,
   } from '../services/workspace/investigation-model.js';
+  import { applyPivotCandidates } from '../services/workspace/intake.js';
   import { getDeepLinks } from '../utils/deep-links.js';
   import { formatTimestamp } from '../utils/format-timestamp.js';
 
@@ -19,9 +20,15 @@
   let { node, investigation, catalog, onClose, onAnalyze, onSave } = $props();
 
   const clipboard = inject(DI_TOKENS.clipboard);
+  const pivotService = inject(DI_TOKENS.workspacePivot);
   let notesDraft = $state('');
   let copied = $state(false);
   let saving = $state(false);
+  let pivotLoading = $state(false);
+  /** @type {import('../services/workspace/pivot-service.js').PivotResult | null} */
+  let pivotResult = $state(null);
+  /** @type {string[]} */
+  let selectedPivotKeys = $state([]);
   const connected = $derived(
     investigation.relationships.flatMap((relationship) => {
       const otherId =
@@ -77,6 +84,45 @@
     await clipboard.copy(node.value);
     copied = true;
     setTimeout(() => (copied = false), 1600);
+  }
+
+  function candidateKey(candidate) {
+    return `${candidate.typeId}:${candidate.value}:${candidate.relationType}`;
+  }
+
+  async function runPivot() {
+    if (pivotLoading) return;
+    pivotLoading = true;
+    pivotResult = null;
+    selectedPivotKeys = [];
+    try {
+      pivotResult = await pivotService.discover(node);
+    } catch (cause) {
+      pivotResult = {
+        nodeId: node.id,
+        candidates: [],
+        checks: [],
+        limited: true,
+        limitReason: cause instanceof Error ? cause.message : 'Pivot could not be started.',
+      };
+    } finally {
+      pivotLoading = false;
+    }
+  }
+
+  function toggleCandidate(candidate) {
+    const key = candidateKey(candidate);
+    selectedPivotKeys = selectedPivotKeys.includes(key)
+      ? selectedPivotKeys.filter((entry) => entry !== key)
+      : [...selectedPivotKeys, key];
+  }
+
+  async function addPivotCandidates() {
+    if (!pivotResult || selectedPivotKeys.length === 0) return;
+    const selected = pivotResult.candidates.filter((candidate) => selectedPivotKeys.includes(candidateKey(candidate)));
+    await commit(applyPivotCandidates(investigation, node.id, selected));
+    pivotResult = null;
+    selectedPivotKeys = [];
   }
 </script>
 
@@ -135,13 +181,35 @@
         </ul>
       </section>
     {/if}
+
+     {#if pivotResult}
+       <section class="details__pivot">
+         <h4>Pivot results</h4>
+         {#if pivotResult.limited}<p>{pivotResult.limitReason}</p>{/if}
+         <ul class="details__checks">
+           {#each pivotResult.checks as check (check.id)}
+             <li><strong>{check.label}</strong> <span>{check.status}</span>{#if check.message}<small>{check.message}</small>{/if}</li>
+           {/each}
+         </ul>
+         {#if pivotResult.candidates.length > 0}
+           <ul class="details__candidates">
+             {#each pivotResult.candidates as candidate (candidateKey(candidate))}
+               <li><label><input type="checkbox" checked={selectedPivotKeys.includes(candidateKey(candidate))} onchange={() => toggleCandidate(candidate)} /><span><code>{candidate.value}</code> <small>{candidate.relationType} · {candidate.sourceLabel}</small></span></label></li>
+             {/each}
+           </ul>
+           <button type="button" disabled={saving || selectedPivotKeys.length === 0} onclick={addPivotCandidates}>Add selected ({selectedPivotKeys.length})</button>
+         {:else}
+           <p>No new indicators were discovered.</p>
+         {/if}
+       </section>
+     {/if}
   </div>
 
   <footer class="details__actions">
     {#if links.length > 0}
       <button type="button" onclick={() => onAnalyze(node.value)}>Analyze</button>
     {/if}
-    <button type="button" disabled title="Pivot discovery is added in the next workspace lot">Pivot</button>
+     <button type="button" disabled={pivotLoading} onclick={runPivot}>{pivotLoading ? 'Pivoting…' : 'Pivot'}</button>
     <button type="button" onclick={copyValue}>{copied ? 'Copied ✓' : 'Copy'}</button>
     <button type="button" onclick={toggleHidden}>{node.hidden ? 'Show in graph' : 'Hide from graph'}</button>
     <button type="button" onclick={remove}>Remove from investigation</button>
@@ -295,6 +363,21 @@
     font-family: var(--font-mono);
     font-size: var(--font-size-xs);
     overflow-wrap: anywhere;
+  }
+
+  .details__candidates {
+    list-style: none;
+    padding: 0;
+  }
+
+  .details__candidates label {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .details__candidates input {
+    accent-color: var(--color-accent);
   }
 
   .details__actions {
