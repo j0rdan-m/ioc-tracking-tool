@@ -42,6 +42,7 @@
   let selectedId = $state(null);
   let loading = $state(true);
   let feedback = $state('');
+  let loadError = $state('');
   let unsubscribe = () => {};
 
   const selected = $derived(
@@ -54,9 +55,17 @@
   }
 
   async function refresh() {
-    investigations = await repository.list();
-    if (selectedId !== null && !investigations.some((entry) => entry.id === selectedId)) {
-      selectedId = null;
+    loading = true;
+    loadError = '';
+    try {
+      investigations = await repository.list();
+      if (selectedId !== null && !investigations.some((entry) => entry.id === selectedId)) {
+        selectedId = null;
+      }
+    } catch (cause) {
+      loadError = cause instanceof Error ? cause.message : 'Could not load local investigations.';
+    } finally {
+      loading = false;
     }
   }
 
@@ -96,7 +105,7 @@
 
   $effect(() => {
     if (!open) return;
-    refresh();
+    void refresh();
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = '';
@@ -139,6 +148,9 @@
       {#if feedback}
         <p class="workspace-modal__feedback" role="status">{feedback}</p>
       {/if}
+      {#if loadError}
+        <p class="workspace-modal__error" role="alert">{loadError}</p>
+      {/if}
       <div class="workspace-import">
         <button type="button" onclick={() => importInput?.click()}>⬆ Import JSON</button>
         <input bind:this={importInput} type="file" accept="application/json,.json" onchange={handleImport} aria-label="Import investigation JSON" />
@@ -173,14 +185,25 @@
     max-height: min(90vh, 62rem);
   }
 
-  .workspace-modal__feedback {
+  .workspace-modal__feedback,
+  .workspace-modal__error {
     margin: 0;
     padding: var(--space-2) var(--space-3);
-    color: var(--color-success);
     font-size: var(--font-size-xs);
-    background: var(--color-success-soft);
-    border: var(--border-width) solid var(--color-success-border);
+    border: var(--border-width) solid var(--color-border);
     border-radius: var(--radius-md);
+  }
+
+  .workspace-modal__feedback {
+    color: var(--color-success);
+    background: var(--color-success-soft);
+    border-color: var(--color-success-border);
+  }
+
+  .workspace-modal__error {
+    color: var(--color-danger);
+    background: var(--color-danger-soft);
+    border-color: var(--color-danger-border);
   }
 
   .workspace-import {

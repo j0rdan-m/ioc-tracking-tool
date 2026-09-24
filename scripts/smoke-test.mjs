@@ -1927,6 +1927,23 @@ let importRejected = false;
 try { parseWorkspaceImport('{not-json'); } catch { importRejected = true; }
 if (!importRejected) throw new Error('Workspace import: malformed JSON must be rejected.');
 
+// Regression: the list must leave its loading state after repository.list(),
+// including when that call fails. Otherwise the empty list stays hidden.
+const workspaceModalSource = readFileSync(
+  new URL('../src/lib/components/WorkspaceModal.svelte', import.meta.url),
+  'utf8',
+);
+const refreshSource = workspaceModalSource.match(
+  /async function refresh\(\) \{([\s\S]*?)^  \}/m,
+)?.[1];
+if (
+  !refreshSource?.includes('loading = true;') ||
+  !/catch\s*\(cause\)/.test(refreshSource) ||
+  !/finally\s*\{\s*loading = false;\s*\}/.test(refreshSource)
+) {
+  throw new Error('Workspace list: refresh must always clear its loading state.');
+}
+
 globalThis.fetch = originalFetch;
 
 console.log(`SMOKE OK — ${loaded.tools.length} tools / ${loaded.categories.length} categories`);
