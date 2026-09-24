@@ -1,0 +1,72 @@
+# .clinerules — model-agnostic rules for Cline
+# Keep this file short: it is sent with every request and eats quota/context.
+
+## 0. Language
+- Talk to me in French. Write code, comments, commit messages and docs in English.
+
+## 1. Project
+- Goal: IOC Investigation Toolkit — a static Svelte (JavaScript) web app for cybersecurity analysts:
+  a searchable catalog of online IoC pivot tools (src/data/tools.json) plus in-browser helpers
+  (Fast analyze, Extract IoCs, Batch analysis, Email headers analysis).
+- Stack: Svelte 5 + Vite (plain JavaScript with JSDoc types), no backend, deployed on GitHub Pages.
+- Run: `npm run dev` (http://localhost:5173)
+- Test: run all three after every change: `npm run check` (svelte-check), `npm run smoke`, `npm run theme`
+- Build: `npm run build` (output in dist/)
+- Key conventions:
+  - Catalog: tools live only in `src/data/tools.json`. Follow the existing entry schema
+    (id, name, url, categoryId, iocTypes, description, tags). Never hard-code tools in components.
+  - Pure logic goes in `src/lib/utils/` (framework-agnostic, covered by `npm run smoke`).
+    Services go in `src/lib/services/`. Components in `src/lib/components/` stay thin.
+  - Dependencies are injected via the DI container (`src/lib/bootstrap.js`, `DI_TOKENS`).
+    Do not import singletons or call `fetch`/`localStorage` directly inside components.
+  - Styling: use only CSS tokens from `src/styles/theme.css`. Never hard-code a colour, radius,
+    font size, shadow or spacing in a component (`npm run theme` will fail).
+  - Privacy: everything runs in the browser. Never send pasted IoCs, headers or logs to any server
+    other than the documented keyless public APIs, and only after an explicit user action.
+  - Analysis output is factual: never derive a "Safe" / "Malicious" verdict. Show provider
+    messages as-is and leave interpretation to the analyst.
+  - Detected values are rendered as inert text. Never auto-open or auto-fetch a URL from user input.
+- Out of scope: backend or database, accounts/login, API keys or paid providers, uploading files
+  to third parties, automatic verdicts or scoring, e-commerce or ads.
+
+## 2. Working method
+- Before coding anything non-trivial, give a short plan (max 8 lines) and wait for my "ok".
+- Work in small steps: one feature or fix per task. Never rewrite the whole project.
+- If the request is ambiguous, ask ONE short question, then proceed with stated assumptions.
+- After each step: tell me what changed, how to run/test it, and what the next step is.
+- Prefer the simplest solution that works. No speculative features, no extra abstractions.
+
+## 3. Token and request economy (free quotas are limited)
+- Read only the files you need. Do not re-read a file you already have in context.
+- Do not scan or list the whole repository unless I ask.
+- Use targeted edits (diffs / replace), never re-output an entire file to change a few lines.
+- Batch related edits into a single tool call when possible.
+- Do not paste long code back to me in chat; the code goes in the files.
+- If a task looks too big for one context window, split it and tell me.
+
+## 4. Code quality
+- Follow the conventions already present in the repo. Match existing style and naming.
+- Keep functions small and named clearly. Comment the "why", not the "what".
+- Validate inputs at boundaries. Handle errors explicitly; never swallow exceptions silently.
+- Never hardcode secrets. Use environment variables and a `.env.example`; keep `.env` in `.gitignore`.
+- Do not add a dependency without saying why. Prefer the standard library or what is already installed.
+- Do not invent APIs or package names. If unsure a library/function exists, say so and check the docs or the installed package.
+
+## 5. Testing and verification
+- Add or update a test for each new behavior when a test setup exists (or propose a minimal one).
+- Run the test command after changes and report the real result. Never claim "it works" without running it.
+- When a command fails, read the actual error, fix the root cause, and retry at most 2 times.
+  After that, stop and explain the situation instead of looping.
+
+## 6. Git
+- Use Git. Suggest a commit after each working step, with a clear message (imperative, < 72 chars).
+- Never run destructive commands (`rm -rf`, `git reset --hard`, `git push --force`, dropping data) without my explicit approval.
+
+## 7. Safety and boundaries
+- Do not modify files outside the project folder.
+- Do not touch `.git`, lockfiles, CI or config files unless the task requires it, and say so if you do.
+- Ask before deleting files or running anything that installs global tools.
+
+## 8. Documentation
+- Keep `README.md` up to date: what it is, how to install, how to run, how to test.
+- Keep a short `TODO.md` of remaining tasks so a new session can resume without re-explaining.
