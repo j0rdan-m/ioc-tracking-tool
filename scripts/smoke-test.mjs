@@ -16,6 +16,14 @@ import { detectIocType } from '../src/lib/utils/detect-ioc-type.js';
 import { FavoritesService } from '../src/lib/services/favorites.js';
 import { FastAnalyzerService } from '../src/lib/services/fast-analyze.js';
 import { getDeepLinks } from '../src/lib/utils/deep-links.js';
+import { computeGraphLayout, GRAPH_HEIGHT, GRAPH_WIDTH } from '../src/lib/utils/graph-layout.js';
+import { filterGraph, neighborhoodIds } from '../src/lib/utils/graph-filter.js';
+import {
+  STATUS_LABELS,
+  VERDICT_LABELS,
+  filterWorkspaceList,
+  investigationStats,
+} from '../src/lib/utils/workspace-view.js';
 import { computeBatchStatus, runBatchAnalysis } from '../src/lib/utils/batch-analyze.js';
 import { extractIocs } from '../src/lib/utils/extract-iocs.js';
 import { defangIoc, normalizeIoc, refang, refangValue } from '../src/lib/utils/refang.js';
@@ -54,6 +62,7 @@ import {
   setNodePosition,
   setNodeTags,
   setNodeVerdict,
+  setInvestigationInfo,
   setStatus,
 } from '../src/lib/services/workspace/investigation-model.js';
 import {
@@ -1793,8 +1802,69 @@ if (createIndexedDbWorkspaceAdapter(null) !== null) {
   throw new Error('Workspace: the IndexedDB adapter must fall back when unavailable.');
 }
 
-
-
+// --- Pure workspace view helpers (V2 lot 2) ---------------------------------
+const graphDomain = {
+  id: 'domain:graph.example.com', typeId: 'domain', value: 'graph.example.com',
+  defanged: 'graph[.]example[.]com', raw: 'graph.example.com', verdict: 'unknown',
+  notes: '', analysis: null, seed: true, depth: 0, tags: [], hidden: false,
+  position: { x: 101, y: 202 }, addedAt: wsNow,
+};
+const graphIp = {
+  ...graphDomain, id: 'ip:192.0.2.10', typeId: 'ip', value: '192.0.2.10',
+  defanged: '192.0.2.10', seed: false, depth: 1, position: null,
+};
+const graphUrl = {
+  ...graphDomain, id: 'url:https://graph.example.com/login', typeId: 'url',
+  value: 'https://graph.example.com/login', defanged: 'hxxps://graph[.]example[.]com/login',
+  seed: false, depth: 2, position: null,
+};
+const graphNodes = [graphDomain, graphIp, graphUrl];
+const graphRelationships = [
+  { id: `${graphDomain.id}->${graphIp.id}:resolves_to`, sourceId: graphDomain.id, targetId: graphIp.id,
+    type: 'resolves_to', confidence: 'observed', sourceType: 'provider', sourceLabel: 'RDAP', provider: 'rdap', observedAt: wsNow, evidence: [] },
+  { id: `${graphIp.id}->${graphUrl.id}:related_to`, sourceId: graphIp.id, targetId: graphUrl.id,
+    type: 'related_to', confidence: 'suspected', sourceType: 'analyst', sourceLabel: 'Analyst', provider: null, observedAt: wsNow, evidence: [] },
+];
+const graphLayout = computeGraphLayout(graphNodes, { width: GRAPH_WIDTH, height: GRAPH_HEIGHT });
+if (graphLayout.size !== graphNodes.length || graphLayout.get(graphDomain.id).x !== 101 || graphLayout.get(graphDomain.id).y !== 202) {
+  throw new Error('Graph layout: stored drag positions must win over automatic placement (AC17).');
+}
+const oneHop = neighborhoodIds(graphRelationships, graphDomain.id, 1);
+if (oneHop.size !== 2 || !oneHop.has(graphIp.id) || oneHop.has(graphUrl.id)) {
+  throw new Error('Graph filter: neighborhood isolation must honor the requested depth.');
+}
+const graphFiltered = filterGraph(graphNodes, graphRelationships, {
+  types: ['domain'], verdicts: ['unknown'], focusId: graphDomain.id, focusDepth: 1, query: 'graph',
+});
+if (graphFiltered.nodes.length !== 1 || graphFiltered.nodes[0].id !== graphDomain.id || graphFiltered.relationships.length !== 0 || !graphFiltered.matchIds.has(graphDomain.id)) {
+  throw new Error('Graph filter: facets must compose and edges must disappear with a hidden endpoint.');
+}
+if (filterGraph(graphNodes, graphRelationships, { sources: ['analyst'] }).relationships.length !== 1 ||
+    filterGraph(graphNodes, graphRelationships, { sourceTypes: ['provider'] }).relationships.length !== 1) {
+  throw new Error('Graph filter: relationship provenance must be filterable.');
+}
+if (filterGraph(graphNodes, graphRelationships, { includeHidden: false }).nodes.some((node) => node.hidden)) {
+  throw new Error('Graph filter: hidden nodes must be excluded by default.');
+}
+const viewInvestigation = {
+  id: 'view-1', name: 'Customer incident', description: 'Campaign notes', status: 'open',
+  tags: ['phishing'], notes: 'Check firewall logs', nodes: graphNodes, relationships: graphRelationships,
+  timeline: [], createdAt: wsNow, updatedAt: wsNow,
+};
+const viewStats = investigationStats(viewInvestigation);
+if (viewStats.indicators !== 3 || viewStats.relationships !== 2 || viewStats.seeds !== 1 || viewStats.verdicts.unknown !== 3) {
+  throw new Error('Workspace view: investigation counters are incorrect.');
+}
+if (filterWorkspaceList([viewInvestigation], 'FIREWALL').length !== 1 || filterWorkspaceList([viewInvestigation], 'not-present').length !== 0) {
+  throw new Error('Workspace view: search must cover investigation notes and IoCs.');
+}
+if (STATUS_LABELS.closed !== 'Closed' || VERDICT_LABELS.suspicious !== 'Suspicious') {
+  throw new Error('Workspace view: status and verdict labels are off-contract.');
+}
+const editedInfo = setInvestigationInfo(ws, { name: 'Renamed case', description: 'Updated context' }, wsNow);
+if (editedInfo.name !== 'Renamed case' || editedInfo.description !== 'Updated context' || editedInfo === ws) {
+  throw new Error('Workspace model: investigation metadata must be editable immutably.');
+}
 
 globalThis.fetch = originalFetch;
 

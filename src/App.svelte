@@ -5,6 +5,7 @@
   import HistoryModal from './lib/components/HistoryModal.svelte';
   import IocExtractorModal from './lib/components/IocExtractorModal.svelte';
   import IocTypeFilter from './lib/components/IocTypeFilter.svelte';
+  import WorkspaceModal from './lib/components/WorkspaceModal.svelte';
   import SearchBar from './lib/components/SearchBar.svelte';
   import ToolGrid from './lib/components/ToolGrid.svelte';
   import { createAppContainer } from './lib/bootstrap.js';
@@ -45,6 +46,7 @@
   let fastAnalyzePrefill = $state('');
   let extractorOpen = $state(false);
   let historyOpen = $state(false);
+  let workspaceOpen = $state(false);
   let emailHeadersOpen = $state(false);
   let catalogPromise = $state(toolRepository.getCatalog());
 
@@ -187,6 +189,14 @@
         </button>
         <button
           type="button"
+          class="workspace-open"
+          onclick={() => (workspaceOpen = true)}
+          title="Group indicators, notes and relationships in a local investigation"
+        >
+          🕸 Workspace
+        </button>
+        <button
+          type="button"
           class="history-open"
           onclick={() => (historyOpen = true)}
           title="Your locally stored investigations (verdicts, tags, notes)"
@@ -252,6 +262,7 @@
       <FastAnalyzeModal bind:open={fastAnalyzeOpen} {catalog} prefill={fastAnalyzePrefill} />
       <IocExtractorModal bind:open={extractorOpen} {catalog} onAnalyze={analyzeExtracted} />
       <HistoryModal bind:open={historyOpen} {catalog} onAnalyze={analyzeFromHistory} />
+      <WorkspaceModal bind:open={workspaceOpen} {catalog} onAnalyze={openFastAnalyze} />
       <EmailHeadersModal bind:open={emailHeadersOpen} {catalog} onAnalyze={analyzeFromHeaders} />
     {:catch error}
       <p class="status status--error" role="alert">
@@ -374,6 +385,7 @@
 
   /* Secondary toolbar actions: outlined pills, same shape as the favorites one. */
   .extract-iocs,
+  .workspace-open,
   .history-open,
   .email-headers-open {
     padding: var(--space-2) var(--space-4);
@@ -389,6 +401,7 @@
   }
 
   .extract-iocs:hover,
+  .workspace-open:hover,
   .history-open:hover,
   .email-headers-open:hover {
     color: var(--color-text);

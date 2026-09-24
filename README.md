@@ -222,9 +222,15 @@ and a local timeline — instead of isolated single-IoC entries.
   (in-memory fallback) and is registered in the DI container as
   `DI_TOKENS.investigationWorkspace`. Everything stays local — no network, no
   backend — and removing a node never touches the V1.3 history;
-- **Next lots**: workspace UI (list, overview, native SVG graph, indicators,
-  timeline, notes), bounded pivots with selection before any graph expansion,
-  V1.3 history migration, V1.5 export of a workspace and JSON import.
+- **Lot 2 — workspace UI (implemented)**: `WorkspaceModal` provides a searchable list and creation
+  form; `InvestigationWorkspace` provides Overview, Graph, Indicators, Timeline and Notes tabs.
+  The native SVG graph supports type, verdict and relationship-provenance filters, search highlighting,
+  neighborhood focus, zoom and persistent drag positions. Analysts can add nodes and typed
+  relationships, set verdicts and edit verbatim notes; the existing `ExportPanel` can export the
+  workspace's available indicator data locally in Markdown, JSON or CSV. The workspace remains
+  IndexedDB-backed with an in-memory fallback and is opened from the toolbar's **🕸 Workspace** action;
+- **Next lots**: bounded pivots with selection before any graph expansion, V1.3 history migration,
+  V1.5 workspace-specific export metadata and JSON import.
 
 `npm run smoke` exercises creation, deduplication, provenance, evidence merging,
 analyst-only verdicts, verbatim notes, timeline, repository persistence and the

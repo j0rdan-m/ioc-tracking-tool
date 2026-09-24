@@ -643,8 +643,33 @@ export function setStatus(investigation, status, now = new Date().toISOString())
 }
 
 /**
- * Stores the latest provider results on a node. Pure data: it never touches
- * the verdict (V2 AC10) and records an `analysis_completed` timeline event.
+ * Updates the analyst-facing metadata of an investigation (V2 AC01: the name
+ * and description stay editable after creation). Tags and status have their
+ * own mutators — one concern per function. A no-op patch returns the input
+ * unchanged so the UI can detect "nothing to save".
+ *
+ * @param {WorkspaceInvestigation} investigation
+ * @param {{ name?: string, description?: string }} patch
+ * @param {string} [now] ISO date (injectable for tests).
+ * @returns {WorkspaceInvestigation}
+ */
+export function setInvestigationInfo(investigation, patch, now = new Date().toISOString()) {
+  assertInvestigation(investigation);
+  const name = patch?.name !== undefined ? String(patch.name).trim() : investigation.name;
+  if (name === '') {
+    throw new TypeError('Workspace: an investigation needs a non-empty name (V2 AC01).');
+  }
+  const description =
+    patch?.description !== undefined ? String(patch.description) : investigation.description;
+  if (name === investigation.name && description === investigation.description) {
+    return investigation;
+  }
+  return { ...investigation, name, description, updatedAt: now };
+}
+
+/**
+ * Sets the latest provider analysis on one node without changing its analyst
+ * verdict (V2 AC10) and records an `analysis_completed` timeline event.
  *
  * @param {WorkspaceInvestigation} investigation
  * @param {string} nodeId

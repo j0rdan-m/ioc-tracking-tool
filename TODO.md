@@ -6,11 +6,11 @@
   preuves, timeline), déduplication sur `typeId:normalized`, repository **IndexedDB**
   injectable avec repli mémoire, câblage DI (`investigationWorkspace`), smoke tests
   (AC01–AC03, AC05–AC06, AC10–AC12, AC15–AC19) + README.
-- [ ] **Lot 2 — Workspace UI** : liste/recherche d'investigations, vue workspace à
+- [x] **Lot 2 — Workspace UI** : liste/recherche d'investigations, vue workspace à
   onglets (Overview, Graph, Indicators, Timeline, Notes), graphe SVG natif
-  interactif (types, filtres type/verdict/source, recherche, focus voisinage, zoom,
+  interactif (filtres type/verdict/source, recherche, focus voisinage, zoom,
   positions persistantes), création manuelle de nœuds/relations, verdicts/notes
-  (AC04, AC09, AC13–AC14, UI des AC10–AC12/AC17).
+  (AC04, AC09, AC13–AC14, UI des AC10–AC12/AC17) + smoke tests et README.
 - [ ] **Lot 3 — Pivot & traçabilité** : `PivotService` borné sur les providers
   existants, sélection avant ajout (anti-explosion), relations déterministes
   URL/e-mail, migration V1.3 (« Add to investigation »), export V1.5 d'un
