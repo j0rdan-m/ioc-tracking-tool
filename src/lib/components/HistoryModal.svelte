@@ -2,6 +2,7 @@
   import { inject } from '../di/provide.js';
   import { DI_TOKENS } from '../di/tokens.js';
   import { INVESTIGATION_VERDICTS } from '../services/investigation-history.js';
+  import ExportPanel from './ExportPanel.svelte';
   import { getDeepLinks } from '../utils/deep-links.js';
   import { formatTimestamp } from '../utils/format-timestamp.js';
   import { collectTags, filterInvestigations, normalizeTag } from '../utils/history-filter.js';
@@ -43,6 +44,8 @@
   let pendingDelete = $state(false);
   let confirmClear = $state(false);
   let showLinks = $state(false);
+  let showExport = $state(false);
+  let exportIds = $state(/** @type {string[]} */ ([]));
 
   /** @type {HTMLInputElement | undefined} */
   let searchEl = $state();
@@ -107,8 +110,22 @@
     if (selectedId !== null && !entries.some((entry) => entry.id === selectedId)) {
       view = 'list';
       selectedId = null;
+      showExport = false;
+    }
+    // Drop selections of investigations that are gone.
+    if (exportIds.length > 0) {
+      const known = new Set(entries.map((entry) => entry.id));
+      const kept = exportIds.filter((id) => known.has(id));
+      if (kept.length !== exportIds.length) {
+        exportIds = kept;
+      }
     }
   }
+
+  const exportSingle = $derived(selected ? [selected] : []);
+  const exportSelection = $derived(
+    entries.filter((entry) => exportIds.includes(entry.id)),
+  );
 
   /**
    * @param {string} message
@@ -127,6 +144,7 @@
     tagDraft = '';
     pendingDelete = false;
     showLinks = false;
+    showExport = false;
   }
 
   function backToList() {
@@ -134,6 +152,7 @@
     selectedId = null;
     pendingDelete = false;
     confirmClear = false;
+    showExport = false;
   }
 
   /** Tool lookup so a stored check links back to its catalog tool. */
@@ -184,6 +203,13 @@
     } catch {
       flash('Copy failed');
     }
+  }
+
+  /** @param {string} id */
+  function toggleExportId(id) {
+    exportIds = exportIds.includes(id)
+      ? exportIds.filter((candidate) => candidate !== id)
+      : [...exportIds, id];
   }
 
   /** Re-runs the analysis on the normalized value; the entry is updated, not duplicated. */
@@ -446,6 +472,12 @@
               <button
                 type="button"
                 class="hist__secondary"
+                aria-expanded={showExport}
+                onclick={() => (showExport = !showExport)}>Export</button
+              >
+              <button
+                type="button"
+                class="hist__secondary"
                 onclick={() => copyValue(selected.normalized, 'IoC copied ✓')}>Copy IoC</button
               >
               <button
@@ -485,6 +517,10 @@
               {:else}
                 <p class="hist__note">No catalog tool covers this indicator type.</p>
               {/if}
+            {/if}
+
+            {#if showExport}
+              <ExportPanel investigations={exportSingle} {catalog} title="Export investigation" />
             {/if}
 
             {#if pendingDelete}
@@ -553,12 +589,30 @@
           <span class="hist__count" role="status">
             {filtered.length} of {entries.length} investigations
           </span>
-          {#if entries.length > 0}
-            <button type="button" class="hist__danger" onclick={() => (confirmClear = true)}>
-              Clear history
-            </button>
-          {/if}
+          <div class="hist__bar-actions">
+            {#if filtered.length > 0}
+              <span class="hist__selected" role="status">{exportIds.length} selected</span>
+              <button
+                type="button"
+                class="hist__secondary"
+                disabled={exportIds.length === 0}
+                aria-expanded={showExport}
+                onclick={() => (showExport = !showExport)}
+              >
+                Export selected
+              </button>
+            {/if}
+            {#if entries.length > 0}
+              <button type="button" class="hist__danger" onclick={() => (confirmClear = true)}>
+                Clear history
+              </button>
+            {/if}
+          </div>
         </div>
+
+        {#if showExport && exportSelection.length > 0}
+          <ExportPanel investigations={exportSelection} {catalog} title="Export selected" />
+        {/if}
 
         {#if confirmClear}
           <div class="hist__confirm" role="alertdialog" aria-label="Confirm clearing the history">
@@ -590,6 +644,7 @@
           <table class="hist__table">
             <thead>
               <tr>
+                <th scope="col"><span class="hist__sr">Select for export</span></th>
                 <th scope="col">IoC</th>
                 <th scope="col">Type</th>
                 <th scope="col">Analyst verdict</th>
@@ -599,6 +654,14 @@
             <tbody>
               {#each filtered as entry (entry.id)}
                 <tr>
+                  <td class="hist__check">
+                    <input
+                      type="checkbox"
+                      checked={exportIds.includes(entry.id)}
+                      onchange={() => toggleExportId(entry.id)}
+                      aria-label={`Select ${entry.defanged} for export`}
+                    />
+                  </td>
                   <td>
                     <button type="button" class="hist__open" onclick={() => openDetail(entry.id)}>
                       <code>{entry.defanged}</code>
@@ -646,6 +709,27 @@
     border-radius: var(--radius-pill);
   }
 
+  .hist__sr {
+    position: absolute;
+    width: var(--space-1);
+    height: var(--space-1);
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: none;
+  }
+
+  .hist__check {
+    width: var(--space-5);
+    text-align: center;
+  }
+
+  .hist__check input {
+    accent-color: var(--color-accent);
+  }
+
   .hist__filters {
     display: flex;
     flex-wrap: wrap;
@@ -690,6 +774,18 @@
   }
 
   .hist__count {
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .hist__bar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .hist__selected {
     font-size: var(--font-size-xs);
     font-weight: var(--font-weight-semibold);
   }

@@ -21,6 +21,18 @@ import { extractIocs } from '../src/lib/utils/extract-iocs.js';
 import { defangIoc, normalizeIoc, refang, refangValue } from '../src/lib/utils/refang.js';
 import { parseHeaders } from '../src/lib/utils/email-header-parser.js';
 import { analyzeHeaders } from '../src/lib/utils/email-header-analyzer.js';
+import {
+  ExportOptionsDefaults,
+  buildExportFilename,
+  buildExportModel,
+  buildMultiExportModel,
+  capitalize,
+  sanitizeSlug,
+  slugLabel,
+  typeLabel,
+} from '../src/lib/services/export/export-model.js';
+import { EXPORT_MIME_TYPES, exportInvestigation } from '../src/lib/services/export/investigation-exporter.js';
+import { escapeCell } from '../src/lib/services/export/csv-exporter.js';
 
 const catalogPath = new URL('../src/data/tools.json', import.meta.url);
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
@@ -866,6 +878,439 @@ if (fallbackAnalysis.mailPath[0].dateIso !== null) {
 }
 if (!fallbackAnalysis.signals.some((signal) => signal.label === 'Unable to fully parse one or more Received headers')) {
   throw new Error('Email headers: a hop without IP nor date must surface an explicit signal.');
+}
+
+globalThis.fetch = originalFetch;
+
+// --- Exports (US V1.5) ---
+// AC05: the whole pipeline is pure — with `fetch` rigged to throw, every
+// format must still build: a single network call would fail right here.
+globalThis.fetch = () => {
+  throw new Error('Export: the network must never be used (AC05).');
+};
+
+const exportNow = '2026-09-24T08:00:00.000Z';
+const exportOptions = { tools: catalog.tools, now: exportNow };
+
+/** Full investigation: verdict, tags, multi-line notes, analysis, provenance. */
+const exportEntry = {
+  typeId: 'ip',
+  normalized: '176.128.43.70',
+  defanged: '176[.]128[.]43[.]70',
+  firstAnalyzedAt: '2026-09-20T10:00:00.000Z',
+  lastAnalyzedAt: '2026-09-22T15:30:00.000Z',
+  verdict: 'suspicious',
+  tags: ['phishing', 'customer-incident'],
+  notes: 'Line one\nline two, with comma',
+  source: 'extracted-text',
+  latestAnalysis: {
+    checkedAt: '2026-09-22T15:30:00.000Z',
+    checks: [
+      {
+        id: 'ip-intel',
+        label: 'IP intelligence (geo, ASN, hosting)',
+        toolId: 'ipapi-is',
+        status: 'ok',
+        ms: 320,
+        summary: 'Hosting facility',
+        fields: [
+          { label: 'ASN', value: 'AS64500' },
+          { label: 'Organization', value: 'Evil Hosting, "Ltd"' },
+          { label: 'Hosting', value: 'Yes' },
+          { label: 'Confidence', value: '87' },
+        ],
+        message: null,
+      },
+      {
+        id: 'ip-rdap',
+        label: 'Network registration (RDAP)',
+        toolId: null,
+        status: 'error',
+        ms: 12,
+        summary: null,
+        fields: [],
+        message: 'Unreachable from the browser (network or CORS restriction).',
+      },
+      {
+        id: 'ip-risk',
+        label: 'Hosting risk (smoke fixture)',
+        toolId: null,
+        status: 'empty',
+        ms: 5,
+        summary: null,
+        fields: [],
+        message: 'No reports for this address.',
+      },
+    ],
+  },
+};
+
+/** Two clean entries for the multi-export checks (no multi-line cells). */
+const exportEntry2 = {
+  typeId: 'domain',
+  normalized: 'phish.example',
+  defanged: 'phish[.]example',
+  firstAnalyzedAt: '2026-09-21T09:00:00.000Z',
+  lastAnalyzedAt: '2026-09-21T09:00:00.000Z',
+  verdict: 'unknown',
+  tags: [],
+  notes: '',
+  source: 'manual',
+  latestAnalysis: null,
+};
+const exportEntry3 = {
+  typeId: 'ip',
+  normalized: '203.0.113.7',
+  defanged: '203[.]0[.]113[.]7',
+  firstAnalyzedAt: '2026-09-19T12:00:00.000Z',
+  lastAnalyzedAt: '2026-09-19T12:00:00.000Z',
+  verdict: 'benign',
+  tags: ['lab'],
+  notes: '',
+  source: null,
+  latestAnalysis: null,
+};
+const exportClone = JSON.stringify(exportEntry);
+
+const exportMd = exportInvestigation([exportEntry], 'markdown', exportOptions);
+const exportJson = exportInvestigation([exportEntry], 'json', exportOptions);
+const exportCsv = exportInvestigation([exportEntry], 'csv', exportOptions);
+const jsonPayload = JSON.parse(exportJson.content);
+
+// Mime types: the download is a plain Blob, never HTML.
+if (EXPORT_MIME_TYPES.markdown !== 'text/markdown;charset=utf-8') {
+  throw new Error('Export: wrong Markdown mime type.');
+}
+if (
+  EXPORT_MIME_TYPES.json !== 'application/json;charset=utf-8' ||
+  EXPORT_MIME_TYPES.csv !== 'text/csv;charset=utf-8'
+) {
+  throw new Error('Export: wrong JSON/CSV mime type.');
+}
+let unknownFormatRejected = false;
+try {
+  exportInvestigation([exportEntry], 'pdf', exportOptions);
+} catch {
+  unknownFormatRejected = true;
+}
+if (!unknownFormatRejected) {
+  throw new Error('Export: an unknown format must be rejected.');
+}
+
+// AC15: filename conventions — slugged indicator + date for a single
+// investigation, date only for a selection, extension per format.
+if (exportMd.filename !== 'investigation-176.128.43.70-2026-09-24.md') {
+  throw new Error(`Export: wrong Markdown filename "${exportMd.filename}".`);
+}
+if (exportJson.filename !== 'investigation-176.128.43.70-2026-09-24.json') {
+  throw new Error(`Export: wrong JSON filename "${exportJson.filename}".`);
+}
+if (exportCsv.filename !== 'investigation-176.128.43.70-2026-09-24.csv') {
+  throw new Error(`Export: wrong CSV filename "${exportCsv.filename}".`);
+}
+if (sanitizeSlug('https://Evil.Example.COM/login') !== 'https-evil.example.com-login') {
+  throw new Error(`Export: wrong slug, got "${sanitizeSlug('https://Evil.Example.COM/login')}".`);
+}
+if (sanitizeSlug('') !== 'ioc' || sanitizeSlug('///') !== 'ioc') {
+  throw new Error('Export: empty slugs must fall back to "ioc".');
+}
+if (
+  buildExportFilename({ format: 'csv', generatedAt: exportNow, slug: 'evil.example', multi: false }) !==
+  'investigation-evil.example-2026-09-24.csv'
+) {
+  throw new Error('Export: buildExportFilename must build single-investigation names.');
+}
+if (
+  buildExportFilename({ format: 'markdown', generatedAt: 'garbage', slug: null, multi: true }) !==
+  'investigations-undated.md'
+) {
+  throw new Error('Export: buildExportFilename must degrade on an unreadable date.');
+}
+// AC06: analyst notes are reproduced verbatim in every format — multi-line
+// notes stay multi-line in Markdown/JSON and are quoted as one cell in CSV.
+if (!exportMd.content.includes('## Analyst notes')) {
+  throw new Error('Export: Markdown must contain the analyst notes section.');
+}
+if (!exportMd.content.includes('Line one\nline two, with comma')) {
+  throw new Error('Export: Markdown must reproduce the notes verbatim.');
+}
+if (jsonPayload.notes !== 'Line one\nline two, with comma') {
+  throw new Error('Export: JSON must reproduce the notes verbatim.');
+}
+if (!exportCsv.content.includes('"Line one\nline two, with comma"')) {
+  throw new Error('Export: CSV must quote the multi-line notes cell.');
+}
+
+// AC07: the exported verdict is strictly the recorded one.
+if (!exportMd.content.includes('**Verdict:** Suspicious')) {
+  throw new Error('Export: Markdown must show the recorded verdict.');
+}
+if (jsonPayload.verdict !== 'suspicious') {
+  throw new Error('Export: JSON must carry the recorded verdict.');
+}
+
+// AC08 + AC17: the headline IoC is defanged and sits between backticks — it
+// can never become an active link.
+if (!exportMd.content.includes('**IOC:** `176[.]128[.]43[.]70`')) {
+  throw new Error('Export: Markdown must show the defanged IoC in backticks.');
+}
+
+// AC09: JSON keeps native types — Yes/No become booleans, integers numbers.
+if (jsonPayload.analysis.checks[0].fields.hosting !== true) {
+  throw new Error('Export: JSON must turn "Yes" into true.');
+}
+if (jsonPayload.analysis.checks[0].fields.confidence !== 87) {
+  throw new Error('Export: JSON must turn "87" into the number 87.');
+}
+if (typeof jsonPayload.analysis.checks[0].fields.organization !== 'string') {
+  throw new Error('Export: JSON must keep free text as a string.');
+}
+if (jsonPayload.analysis.checks[0].ms !== 320) {
+  throw new Error('Export: JSON must keep the duration as a number.');
+}
+if (jsonPayload.type !== 'ip' || jsonPayload.normalized !== '176.128.43.70') {
+  throw new Error('Export: JSON must carry the type and the normalized value.');
+}
+if (jsonPayload.raw !== null) {
+  throw new Error('Export: a history entry has no raw spelling — JSON must use null (AC12).');
+}
+
+// AC10: RFC 4180 escaping — commas, quotes and line breaks get quoted.
+if (escapeCell('a,b') !== '"a,b"' || escapeCell('say "hi"') !== '"say ""hi"""') {
+  throw new Error('Export: escapeCell must quote commas and double the quotes.');
+}
+if (escapeCell('line1\nline2') !== '"line1\nline2"' || escapeCell('plain') !== 'plain') {
+  throw new Error('Export: escapeCell must quote line breaks only.');
+}
+if (!exportCsv.content.includes('"Evil Hosting, ""Ltd"""')) {
+  throw new Error('Export: CSV cells with commas/quotes must be escaped.');
+}
+
+// AC16: provider attribution sits between the check heading and its facts;
+// `No result` stays distinguishable from `Error`.
+const headingAt = exportMd.content.indexOf('### IP intelligence');
+const providerAt = exportMd.content.indexOf('Source: ipapi.is');
+const firstFieldAt = exportMd.content.indexOf('- ASN:');
+if (headingAt === -1 || providerAt === -1 || firstFieldAt === -1 || providerAt < headingAt || providerAt > firstFieldAt) {
+  throw new Error('Export: provider attribution must sit between the check heading and the facts.');
+}
+if (jsonPayload.analysis.checks[0].provider !== 'ipapi.is') {
+  throw new Error('Export: JSON must carry the provider name.');
+}
+if (jsonPayload.analysis.checks[1].provider !== null) {
+  throw new Error('Export: a check without a catalog tool has no provider name.');
+}
+if (
+  jsonPayload.analysis.checks[1].statusLabel !== 'Error' ||
+  jsonPayload.analysis.checks[2].statusLabel !== 'No result'
+) {
+  throw new Error('Export: "Error" and "No result" must stay distinguishable.');
+}
+if (
+  !exportMd.content.includes('- Status: Error') ||
+  !exportMd.content.includes('- Status: No result') ||
+  !exportMd.content.includes('- Message: No reports for this address.')
+) {
+  throw new Error('Export: Markdown must surface check statuses and messages.');
+}
+
+// AC17: the Markdown links section lists names only — a deep-link URL must
+// never render as an active link (JSON keeps the structured URLs).
+if (!exportMd.content.includes('- AbuseIPDB')) {
+  throw new Error('Export: Markdown must list the investigation links by name.');
+}
+if (exportMd.content.includes('abuseipdb.com/check')) {
+  throw new Error('Export: Markdown must not embed deep-link URLs (AC17).');
+}
+if (!jsonPayload.links.some((link) => link.url.includes('abuseipdb.com/check/176.128.43.70'))) {
+  throw new Error('Export: JSON may keep the structured link URLs.');
+}
+
+// Provenance label in Markdown, generation date, tags joined for CSV.
+if (!exportMd.content.includes('**Source:** Extracted from pasted text')) {
+  throw new Error('Export: Markdown must show the recorded provenance.');
+}
+if (!exportMd.content.includes('Generated: 24/09/2026 08:00')) {
+  throw new Error('Export: Markdown must show the generation date.');
+}
+if (!exportCsv.content.includes('phishing;customer-incident')) {
+  throw new Error('Export: CSV must join the tags with semicolons.');
+}
+const csvHeader = exportCsv.content.split('\n')[0];
+if (
+  csvHeader.indexOf('ip_intel_status') === -1 ||
+  csvHeader.indexOf('asn') === -1 ||
+  csvHeader.indexOf('ip_intel_status') > csvHeader.indexOf('asn')
+) {
+  throw new Error('Export: CSV columns must be base fields, then statuses, then fields.');
+}
+// AC11: content options are applied when the model is built — excluded
+// sections stay absent from the document, not merely empty.
+const bareOptions = {
+  ...exportOptions,
+  includeAnalysis: false,
+  includeNotes: false,
+  includeTags: false,
+  includeLinks: false,
+};
+const bareInv = buildExportModel([exportEntry], bareOptions).investigations[0];
+if ('analysis' in bareInv || 'notes' in bareInv.analyst || 'tags' in bareInv.analyst || 'links' in bareInv) {
+  throw new Error('Export: excluded sections must be absent from the model (AC11).');
+}
+const bareJson = JSON.parse(exportInvestigation([exportEntry], 'json', bareOptions).content);
+if ('analysis' in bareJson || 'notes' in bareJson || 'tags' in bareJson || 'links' in bareJson) {
+  throw new Error('Export: excluded sections must be absent from JSON (AC11).');
+}
+const bareMd = exportInvestigation([exportEntry], 'markdown', bareOptions).content;
+for (const heading of ['## Tags', '## Analysis results', '## Analyst notes', '## Investigation links']) {
+  if (bareMd.includes(heading)) {
+    throw new Error(`Export: excluded section "${heading}" leaked into Markdown (AC11).`);
+  }
+}
+const bareCsvHeader = exportInvestigation([exportEntry], 'csv', bareOptions).content.split('\n')[0];
+if (bareCsvHeader.includes('notes') || bareCsvHeader.includes('_status')) {
+  throw new Error('Export: excluded columns must be absent from CSV (AC11).');
+}
+// includeRaw (JSON only): the key appears — null, because nothing is retained.
+const rawCheck = buildExportModel([exportEntry], { ...exportOptions, includeRaw: true })
+  .investigations[0].analysis.checks[0];
+if (!('raw' in rawCheck) || rawCheck.raw !== null) {
+  throw new Error('Export: includeRaw must add a null raw payload (AC12).');
+}
+const defaultCheck = buildExportModel([exportEntry], exportOptions).investigations[0].analysis.checks[0];
+if ('raw' in defaultCheck) {
+  throw new Error('Export: raw payloads must stay opt-in (AC11).');
+}
+if (
+  ExportOptionsDefaults.includeAnalysis !== true ||
+  ExportOptionsDefaults.includeNotes !== true ||
+  ExportOptionsDefaults.includeTags !== true ||
+  ExportOptionsDefaults.includeLinks !== true ||
+  ExportOptionsDefaults.includeRaw !== false ||
+  !Object.isFrozen(ExportOptionsDefaults)
+) {
+  throw new Error('Export: unexpected default content options.');
+}
+
+// AC12: missing data never breaks an export — null in JSON, empty in CSV,
+// "Not available" in Markdown; older entries without provenance still work.
+const partial = { typeId: 'domain', normalized: 'example.test' };
+const partialInv = buildExportModel([partial], exportOptions).investigations[0];
+if (partialInv.dates.first !== null || partialInv.dates.last !== null) {
+  throw new Error('Export: missing dates must be null in the model (AC12).');
+}
+if (partialInv.dates.firstLabel !== 'Not available' || partialInv.dates.lastLabel !== 'Not available') {
+  throw new Error('Export: missing dates must read "Not available" (AC12).');
+}
+if (partialInv.analyst.verdict !== 'unknown' || partialInv.analysis !== null || partialInv.provenance !== null) {
+  throw new Error('Export: a partial entry must default safely (AC12).');
+}
+if (partialInv.indicator.defanged !== 'example[.]test') {
+  throw new Error('Export: a missing defanged value must be computed.');
+}
+const partialMd = exportInvestigation([partial], 'markdown', exportOptions).content;
+if (!partialMd.includes('**First analyzed:** Not available') || !partialMd.includes('**Verdict:** Unknown')) {
+  throw new Error('Export: Markdown must show "Not available" / "Unknown" (AC12).');
+}
+if (!partialMd.includes('No analysis stored.')) {
+  throw new Error('Export: Markdown must say when no analysis is stored.');
+}
+if (partialMd.includes('**Source:**')) {
+  throw new Error('Export: an unknown provenance must be omitted, not invented.');
+}
+const partialJson = JSON.parse(exportInvestigation([partial], 'json', exportOptions).content);
+if (partialJson.firstAnalyzedAt !== null || partialJson.lastAnalyzedAt !== null || partialJson.source !== null) {
+  throw new Error('Export: JSON must use null for missing data (AC12).');
+}
+if (partialJson.verdict !== 'unknown' || partialJson.analysis !== null) {
+  throw new Error('Export: JSON must default the verdict and report no analysis.');
+}
+const partialLines = exportInvestigation([partial], 'csv', exportOptions).content.trimEnd().split('\n');
+const partialCols = partialLines[0].split(',');
+const partialVals = partialLines[1].split(',');
+const partialCell = (/** @type {string} */ name) => partialVals[partialCols.indexOf(name)];
+if (
+  partialCell('ioc') !== 'example[.]test' ||
+  partialCell('raw') !== '' ||
+  partialCell('first_analyzed') !== '' ||
+  partialCell('last_analyzed') !== '' ||
+  partialCell('source') !== '' ||
+  partialCell('verdict') !== 'unknown'
+) {
+  throw new Error('Export: CSV must render missing data as empty cells (AC12).');
+}
+// AC13: multi-export — one file, several investigations.
+const multiModel = buildMultiExportModel([exportEntry2, exportEntry3], exportOptions);
+if (multiModel.investigations.length !== 2 || multiModel.metadata.generatedAt !== exportNow) {
+  throw new Error('Export: the multi model must carry every investigation and the date.');
+}
+const multiMd = exportInvestigation([exportEntry2, exportEntry3], 'markdown', exportOptions);
+if (!multiMd.content.startsWith('# IOC Investigation Report')) {
+  throw new Error('Export: a multi export must use the report layout.');
+}
+if (!multiMd.content.includes('## phish[.]example') || !multiMd.content.includes('## 203[.]0[.]113[.]7')) {
+  throw new Error('Export: every investigation must appear in the report.');
+}
+const multiJson = JSON.parse(exportInvestigation([exportEntry2, exportEntry3], 'json', exportOptions).content);
+if (!Array.isArray(multiJson.investigations) || multiJson.investigations.length !== 2) {
+  throw new Error('Export: the JSON report must list every investigation.');
+}
+if (multiJson.generatedAt !== exportNow) {
+  throw new Error('Export: the JSON report must carry the generation date.');
+}
+const multiCsv = exportInvestigation([exportEntry2, exportEntry3], 'csv', exportOptions);
+const multiLines = multiCsv.content.trimEnd().split('\n');
+if (
+  multiLines.length !== 3 ||
+  !multiLines[1].includes('phish[.]example') ||
+  !multiLines[2].includes('203[.]0[.]113[.]7')
+) {
+  throw new Error('Export: CSV must hold one line per investigation.');
+}
+if (multiCsv.filename !== 'investigations-2026-09-24.csv') {
+  throw new Error(`Export: wrong multi filename "${multiCsv.filename}" (AC15).`);
+}
+
+// AC14: building an export never mutates the investigations — the history and
+// its lastAnalyzedAt stay untouched.
+if (JSON.stringify(exportEntry) !== exportClone) {
+  throw new Error('Export: the source investigation was mutated (AC14).');
+}
+
+// Session-only input without a defanged spelling: it is computed from the
+// normalized value, and the original raw spelling travels along in JSON.
+const sessionUrl = {
+  typeId: 'url',
+  normalized: 'https://evil.example.com/login',
+  raw: 'hxxps://evil[.]example[.]com/login',
+  latestAnalysis: null,
+};
+const sessionMd = exportInvestigation([sessionUrl], 'markdown', exportOptions);
+if (!sessionMd.content.includes('hxxps://evil[.]example[.]com/login')) {
+  throw new Error('Export: a missing defanged value must be computed (AC08).');
+}
+if (!/^[A-Za-z0-9._-]+\.md$/.test(sessionMd.filename)) {
+  throw new Error(`Export: unsafe filename "${sessionMd.filename}" (AC15).`);
+}
+const sessionJson = JSON.parse(exportInvestigation([sessionUrl], 'json', exportOptions).content);
+if (sessionJson.raw !== 'hxxps://evil[.]example[.]com/login') {
+  throw new Error('Export: JSON must keep the value exactly as found.');
+}
+if (sessionJson.verdict !== 'unknown') {
+  throw new Error('Export: a session export without a recorded verdict is "unknown" (AC07).');
+}
+
+// Shared helpers stay in sync with the catalog and the display conventions.
+if (capitalize('unknown') !== 'Unknown' || slugLabel('Sample names') !== 'sample_names' || slugLabel('ASN') !== 'asn') {
+  throw new Error('Export: shared formatting helpers are off-contract.');
+}
+for (const type of catalog.iocTypes) {
+  if (typeLabel(type.id) !== type.label) {
+    throw new Error(`Export: typeLabel("${type.id}") must match the catalog.`);
+  }
+}
+if (typeLabel('nope') !== 'nope') {
+  throw new Error('Export: typeLabel must fall back to the identifier.');
 }
 
 globalThis.fetch = originalFetch;

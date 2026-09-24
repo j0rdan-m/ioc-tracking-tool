@@ -1,6 +1,7 @@
 <script>
   import { inject } from '../di/provide.js';
   import { DI_TOKENS } from '../di/tokens.js';
+  import ExportPanel from './ExportPanel.svelte';
   import { computeBatchStatus, runBatchAnalysis } from '../utils/batch-analyze.js';
   import { extractIocs } from '../utils/extract-iocs.js';
   import { getDeepLinks } from '../utils/deep-links.js';
@@ -227,12 +228,15 @@
   // Ids already written to the local history during the current batch.
   /** @type {Set<string>} */
   const recordedIds = new Set();
+  let showBatchExport = $state(false);
+  let batchFinishedAt = $state('');
 
   /**
    * Records every row that reached a final state in the local investigation
    * history. The entry is created on the first analysis of the indicator and
    * updated afterwards, never duplicated. Cancelled rows are skipped: they
-   * never ran, so they must not replace an earlier snapshot.
+   * never ran, so they must not replace an earlier snapshot. Indicators
+   * pulled out of a pasted text carry an `extracted-text` provenance (US V1.5).
    *
    * @param {import('../types.js').BatchRow[]} rows
    */
@@ -246,7 +250,11 @@
         continue;
       }
       recordedIds.add(row.ioc.id);
-      history.upsert(row.ioc, buildAnalysisSnapshot(row.checkStates, new Date().toISOString()));
+      history.upsert(
+        row.ioc,
+        buildAnalysisSnapshot(row.checkStates, new Date().toISOString()),
+        'extracted-text',
+      );
     }
   }
 
@@ -258,11 +266,39 @@
 
   /** @param {import('../types.js').ExtractedIoc} ioc */
   function saveIoc(ioc) {
-    history.upsert(ioc);
+    history.upsert(ioc, null, 'extracted-text');
     savedKey = ioc.id;
     clearTimeout(savedTimer);
     savedTimer = setTimeout(() => (savedKey = null), 2000);
   }
+
+  /**
+   * Session-only batch inputs for the export (AC14): the current rows merged
+   * with whatever the history already knows. Reading the history never writes
+   * to it — the export leaves `lastAnalyzedAt` untouched, and rows that were
+   * never recorded still export fine.
+   *
+   * @returns {import('../types.js').ExportInput[]}
+   */
+  function buildBatchExport() {
+    return batchRows.map((row) => {
+      const stored = history.get(row.ioc.id);
+      return {
+        typeId: row.ioc.typeId,
+        normalized: row.ioc.normalized,
+        defanged: row.ioc.defanged,
+        raw: row.ioc.raw ?? null,
+        firstAnalyzedAt: stored?.firstAnalyzedAt ?? batchFinishedAt,
+        lastAnalyzedAt: stored?.lastAnalyzedAt ?? batchFinishedAt,
+        verdict: stored?.verdict ?? 'unknown',
+        tags: stored?.tags ?? [],
+        notes: stored?.notes ?? '',
+        source: stored?.source ?? 'extracted-text',
+        latestAnalysis: buildAnalysisSnapshot(row.checkStates, batchFinishedAt || new Date().toISOString()),
+      };
+    });
+  }
+  const batchExport = $derived(buildBatchExport());
 
   /**
    * Runs the compatible checks for every selected IoC, at most 3 IoCs at a
@@ -280,6 +316,8 @@
     recordedIds.clear();
     detailIds = [];
     batchRows = [];
+    showBatchExport = false;
+    batchFinishedAt = '';
     stopping = false;
     analysisRunning = true;
     const run = runBatchAnalysis(
@@ -301,6 +339,7 @@
       if (generation !== batchGeneration) {
         return;
       }
+      batchFinishedAt = new Date().toISOString();
       analysisRunning = false;
       stopping = false;
       batchRun = null;
@@ -607,10 +646,25 @@
                     ? 'No automated check to run for this selection'
                     : `${progress.settled} / ${progress.total} checks completed`}
                 </span>
-                <span class="batch__phase">
-                  {analysisRunning ? (stopping ? 'Stopping…' : 'Analysis in progress…') : 'Finished'}
-                </span>
+                <div class="batch__head-actions">
+                  <span class="batch__phase">
+                    {analysisRunning ? (stopping ? 'Stopping…' : 'Analysis in progress…') : 'Finished'}
+                  </span>
+                  {#if !analysisRunning}
+                    <button
+                      type="button"
+                      class="ioc__copy"
+                      aria-expanded={showBatchExport}
+                      onclick={() => (showBatchExport = !showBatchExport)}
+                    >
+                      ⬇ Export results
+                    </button>
+                  {/if}
+                </div>
               </div>
+              {#if showBatchExport && !analysisRunning && batchExport.length > 0}
+                <ExportPanel investigations={batchExport} {catalog} title="Export results" />
+              {/if}
               {#if progress.total > 0}
                 <div
                   class="batch__gauge"
@@ -770,7 +824,6 @@
           {/if}
         {/if}
       {/if}
-
       <p class="modal__foot">
         Extraction runs entirely in this browser: the pasted text is never sent to any API. External
         links only open on an explicit click.

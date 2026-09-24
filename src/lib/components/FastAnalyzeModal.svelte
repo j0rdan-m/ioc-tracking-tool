@@ -2,6 +2,7 @@
   import { untrack } from 'svelte';
   import { inject } from '../di/provide.js';
   import { DI_TOKENS } from '../di/tokens.js';
+  import ExportPanel from './ExportPanel.svelte';
   import { detectIocType } from '../utils/detect-ioc-type.js';
   import { getDeepLinks } from '../utils/deep-links.js';
   import { buildAnalysisSnapshot } from '../utils/history-filter.js';
@@ -34,6 +35,9 @@
   let submittedValue = $state('');
   /** @type {string} */
   let notice = $state('');
+  let finishedAt = $state('');
+  let submittedRaw = $state('');
+  let showExport = $state(false);
 
   /**
    * One entry per check of the current run, updated in place as the promises
@@ -98,6 +102,9 @@
     phase = 'idle';
     iocTypeId = null;
     submittedValue = '';
+    submittedRaw = '';
+    finishedAt = '';
+    showExport = false;
     checks = [];
     notice = '';
   }
@@ -121,11 +128,15 @@
     // Normalized (refanged, canonical) value: it is what providers receive and
     // what keys the local investigation history, so `EXAMPLE.COM` and
     // `example.com` are one investigation (AC14).
+    submittedRaw = value.trim();
     submittedValue = normalizeIoc(value, detected);
+    finishedAt = '';
+    showExport = false;
     const definitions = analyzer.getChecks(detected);
     checks = definitions.map((def) => ({ def, status: /** @type {'pending'} */ ('pending'), result: null, ms: null }));
     if (definitions.length === 0) {
       phase = 'done';
+      finishedAt = new Date().toISOString();
       notice =
         'No free unauthenticated API can check this IoC type directly from the browser — open a tool below to go further.';
       return;
@@ -152,6 +163,7 @@
         .finally(() => {
           pending -= 1;
           if (pending === 0) {
+            finishedAt = new Date().toISOString();
             phase = 'done';
             saveToHistory();
           }
@@ -163,6 +175,7 @@
    * Records the finished run in the local investigation history: the entry is
    * created on the first analysis of the indicator and updated afterwards
    * (never duplicated), leaving the analyst verdict, notes and tags untouched.
+   * Investigating by hand here means a `manual` provenance (US V1.5).
    */
   function saveToHistory() {
     if (!iocTypeId || submittedValue === '' || checks.length === 0) {
@@ -176,9 +189,39 @@
         normalized: submittedValue,
         defanged: defangIoc(submittedValue, typeId),
       },
-      buildAnalysisSnapshot(checks, new Date().toISOString()),
+      buildAnalysisSnapshot(checks, finishedAt || new Date().toISOString()),
+      'manual',
     );
   }
+
+  /**
+   * Session-only export input (AC14): the current run merged with whatever the
+   * history already knows (verdict, tags, notes, dates). Reading the history
+   * never writes to it — the export leaves `lastAnalyzedAt` untouched.
+   *
+   * @returns {import('../types.js').ExportInput | null}
+   */
+  function buildSessionExport() {
+    if (!iocTypeId || submittedValue === '' || phase !== 'done') {
+      return null;
+    }
+    const typeId = /** @type {import('../types.js').IocTypeId} */ (iocTypeId);
+    const stored = history.get(`${typeId}:${submittedValue}`);
+    return {
+      typeId,
+      normalized: submittedValue,
+      defanged: defangIoc(submittedValue, typeId),
+      raw: submittedRaw,
+      firstAnalyzedAt: stored?.firstAnalyzedAt ?? finishedAt,
+      lastAnalyzedAt: stored?.lastAnalyzedAt ?? finishedAt,
+      verdict: stored?.verdict ?? 'unknown',
+      tags: stored?.tags ?? [],
+      notes: stored?.notes ?? '',
+      source: stored?.source ?? 'manual',
+      latestAnalysis: buildAnalysisSnapshot(checks, finishedAt || new Date().toISOString()),
+    };
+  }
+  const sessionExport = $derived(buildSessionExport());
 
   /** @param {string} iocType @returns {string} */
   function iocLabel(iocType) {
@@ -323,6 +366,20 @@
         </section>
       {/if}
 
+      {#if sessionExport}
+        <div class="export__trigger">
+          <button
+            type="button"
+            class="fast__export"
+            aria-expanded={showExport}
+            onclick={() => (showExport = !showExport)}>⬇ Export</button
+          >
+        </div>
+        {#if showExport}
+          <ExportPanel investigations={[sessionExport]} {catalog} title="Export investigation" />
+        {/if}
+      {/if}
+
       <p class="modal__foot">
         Queries go straight from your browser to the providers (no account, no key, nothing sent to
         this site). Only investigate indicators you are authorized to.
@@ -334,6 +391,29 @@
 <style>
   /* Dialog chrome (backdrop, box, header, buttons, footer) is shared by every
      modal: see src/styles/components.css. Only the content below is local. */
+
+  .export__trigger {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .fast__export {
+    padding: var(--space-2) var(--space-4);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-muted);
+    background: transparent;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: var(--transition-colors);
+  }
+
+  .fast__export:hover {
+    color: var(--color-text);
+    border-color: var(--color-accent);
+  }
 
   .checks {
     display: flex;

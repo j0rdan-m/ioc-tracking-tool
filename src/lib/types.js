@@ -174,6 +174,51 @@
  * @property {string[]} tags       Free-form labels used for filtering.
  * @property {string} notes        Free-form analyst notes.
  * @property {InvestigationAnalysisSnapshot | null} latestAnalysis Latest provider results.
+ * @property {InvestigationSource | null} source Provenance of the investigation (US V1.5),
+ *   `null` when unknown.
+ */
+
+/**
+ * Provenance of an investigation: how the indicator first entered the app.
+ * Exported as-is when known (US V1.5), never derived from provider answers.
+ *
+ * @typedef {'manual' | 'extracted-text' | 'email-headers'} InvestigationSource
+ */
+
+/**
+ * Normalized input accepted by the export pipeline (US V1.5). A stored
+ * `InvestigationEntry` satisfies it directly; session-only data (Fast analyze,
+ * batch results not kept in the history) can be adapted by the caller with
+ * sensible defaults (`verdict: 'unknown'`, empty tags/notes, no dates).
+ *
+ * @typedef {Object} ExportInput
+ * @property {string} typeId   IoC type identifier.
+ * @property {string} normalized Exploitable value used as the identity.
+ * @property {string} [defanged] Neutralized form (computed when missing).
+ * @property {string | null} [raw] Value exactly as originally found, when known.
+ * @property {string} [firstAnalyzedAt] ISO date of the first analysis, `''` when unknown.
+ * @property {string} [lastAnalyzedAt] ISO date of the latest analysis, `''` when unknown.
+ * @property {InvestigationVerdict} [verdict] Analyst qualification (default `unknown`).
+ * @property {string[]} [tags] Free-form labels.
+ * @property {string} [notes] Free-form analyst notes.
+ * @property {InvestigationAnalysisSnapshot | null} [latestAnalysis] Latest provider results.
+ * @property {InvestigationSource | null} [source] Provenance, when known.
+ */
+
+/**
+ * Content options of an export (US V1.5). The most useful options default to
+ * on; raw provider responses stay off by default.
+ *
+ * @typedef {Object} ExportOptions
+ * @property {boolean} [includeAnalysis] Include the latest analysis results.
+ * @property {boolean} [includeNotes]    Include the analyst notes.
+ * @property {boolean} [includeTags]     Include the tags.
+ * @property {boolean} [includeLinks]    Include the external investigation links.
+ * @property {boolean} [includeRaw]      Include raw provider responses (JSON only; the
+ *   application does not retain them yet, so the value stays `null`).
+ * @property {import('./types.js').Tool[]} [tools] Catalog used to resolve provider
+ *   names and build the investigation links.
+ * @property {string | Date} [now] Generation date (injectable for tests).
  */
 
 export {};

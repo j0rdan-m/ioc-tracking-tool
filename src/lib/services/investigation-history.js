@@ -20,6 +20,7 @@
  * @typedef {import('../types.js').InvestigationEntry} InvestigationEntry
  * @typedef {import('../types.js').InvestigationAnalysisSnapshot} InvestigationAnalysisSnapshot
  * @typedef {import('../types.js').InvestigationVerdict} InvestigationVerdict
+ * @typedef {import('../types.js').InvestigationSource} InvestigationSource
  */
 
 const DEFAULT_STORAGE_KEY = 'ioc-toolkit:investigations';
@@ -30,6 +31,13 @@ export const INVESTIGATION_VERDICTS = /** @type {const} */ ([
   'benign',
   'suspicious',
   'malicious',
+]);
+
+/** Known provenances, in display order (US V1.5). */
+export const INVESTIGATION_SOURCES = /** @type {const} */ ([
+  'manual',
+  'extracted-text',
+  'email-headers',
 ]);
 
 /**
@@ -125,13 +133,16 @@ export class InvestigationHistoryService {
    * normalized value is already known (AC03/AC14). The first analysis date, the
    * notes, the tags and the analyst verdict are always preserved — analysing
    * again never overwrites them, and never sets a verdict (AC04, AC05, AC07,
-   * AC12). Only the latest technical results are replaced.
+   * AC12). Only the latest technical results are replaced. The provenance is
+   * recorded on creation and never changed afterwards: an investigation keeps
+   * the origin it first entered the app with (US V1.5).
    *
    * @param {{ id: string, typeId: string, normalized: string, defanged: string }} ioc
    * @param {InvestigationAnalysisSnapshot | null} [latestAnalysis] New results, if any.
+   * @param {InvestigationSource | null} [source] Provenance of the investigation.
    * @returns {InvestigationEntry}
    */
-  upsert(ioc, latestAnalysis = null) {
+  upsert(ioc, latestAnalysis = null, source = null) {
     const entries = this.#read();
     const now = this.#now();
     const existing = entries.find((entry) => entry.id === ioc.id);
@@ -144,6 +155,8 @@ export class InvestigationHistoryService {
           defanged: ioc.defanged,
           lastAnalyzedAt: now,
           latestAnalysis: latestAnalysis ?? existing.latestAnalysis,
+          // Fill a missing provenance on legacy entries; never replace a known one.
+          source: existing.source ?? source,
         }
       : {
           id: ioc.id,
@@ -156,6 +169,7 @@ export class InvestigationHistoryService {
           tags: [],
           notes: '',
           latestAnalysis,
+          source,
         };
     this.#write(
       existing
@@ -287,6 +301,7 @@ export class InvestigationHistoryService {
         Array.isArray(value.latestAnalysis.checks)
           ? { checkedAt: value.latestAnalysis.checkedAt, checks: value.latestAnalysis.checks }
           : null,
+      source: INVESTIGATION_SOURCES.includes(value.source) ? value.source : null,
     };
   }
 

@@ -120,6 +120,41 @@ Implementation: `src/lib/utils/email-header-parser.js` (unfolding + ordered fiel
 exercised by `npm run smoke`), rendered by `src/lib/components/EmailHeadersModal.svelte` and wired
 in `App.svelte` through the `onAnalyze` hand-off, exactly like the other modals.
 
+## Exports
+
+Every view where an investigation is visible can export it as a local file — **Markdown** for
+tickets, wikis and incident reports, **JSON** for tooling and archiving, **CSV** for spreadsheets
+and IoC comparisons. Nothing is uploaded: the file is built in the browser as a `Blob` and saved
+through an invisible anchor, and the export never touches the network or the stored history.
+
+- **Entry points**: the *Export* button in a History detail, the *Export selected* button with the
+  per-row checkboxes in History (several investigations → one file), *⬇ Export* at the end of a
+  Fast analyze run, and *⬇ Export results* on a finished batch in Extract IoCs (session-only data
+  is exported without writing to the history);
+- **Content options**: analysis results, analyst notes, tags and external investigation links are
+  exported by default and can be turned off per export — excluded sections are absent from the
+  file, not empty. *Raw provider responses* (JSON only) is off by default and currently yields
+  `null`, since the app does not retain the raw payloads;
+- **Safety**: the headline IoC is always the defanged form (`176[.]128[.]43[.]70`,
+  `hxxps://evil[.]example[.]com/...`) and sits between backticks in Markdown; the links section
+  lists tool names only, never an active URL. The verdict, tags and notes are exported exactly as
+  recorded — providers never feed them — and the provenance (`manual`, `extracted-text`,
+  `email-headers`) is shown when known;
+- **Missing data** never breaks an export: `null` in JSON, empty cells in CSV, *Not available* in
+  Markdown; entries saved before provenance existed export fine without it;
+- **Formats**: Markdown follows the report layout (one `## IoC` block per investigation for a
+  selection); JSON keeps native types (`Yes` → `true`, `"87"` → `87`); CSV is one line per IoC —
+  base columns, one `<check>_status` column per provider, then one column per field, RFC 4180
+  quoted, tags joined with `;`;
+- **Filenames**: `investigation-<slug>-<YYYY-MM-DD>.md|json|csv` for one investigation,
+  `investigations-<YYYY-MM-DD>.<ext>` for a selection.
+
+Implementation: `src/lib/services/export/` (shared model `export-model.js` + the three pure
+formatters), `src/lib/services/export/investigation-exporter.js` (single entry point),
+`src/lib/services/download.js` (Blob → file, registered as `DI_TOKENS.download`) and
+`src/lib/components/ExportPanel.svelte` (shared panel: options, preview, copy, download) —
+exercised end to end by `npm run smoke`.
+
 ## Getting started
 
 ```bash
@@ -194,6 +229,8 @@ src/
       tool-repository.js          # read-side repository over the catalog
       clipboard.js                # copy-to-clipboard with legacy fallback
       favorites.js                # starred tools persisted in localStorage
+      download.js                 # Blob → local file download (US V1.5, no network)
+      export/                     # US V1.5 export pipeline: model + Markdown/JSON/CSV formatters
     utils/                    # pure helpers (refang/defang, IoC extraction, batch analysis, filtering, colors)
     components/               # Svelte UI components
   App.svelte                  # page layout & state

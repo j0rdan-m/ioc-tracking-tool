@@ -3,6 +3,7 @@ import healthCatalog from '../data/health.json';
 import { createContainer } from './di/container.js';
 import { DI_TOKENS } from './di/tokens.js';
 import { ClipboardService } from './services/clipboard.js';
+import { DownloadService } from './services/download.js';
 import { FavoritesService } from './services/favorites.js';
 import { FastAnalyzerService } from './services/fast-analyze.js';
 import { InvestigationHistoryService } from './services/investigation-history.js';
@@ -34,6 +35,10 @@ export function createAppContainer() {
   );
 
   container.register(DI_TOKENS.clipboard, () => new ClipboardService());
+
+  // Local file generation for investigation exports: pure `Blob` download,
+  // no network and no backend involved (US V1.5).
+  container.register(DI_TOKENS.download, () => new DownloadService());
 
   container.register(DI_TOKENS.favorites, () => new FavoritesService());
 
