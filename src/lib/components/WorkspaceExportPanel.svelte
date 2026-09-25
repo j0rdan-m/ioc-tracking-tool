@@ -14,11 +14,19 @@
   let includeTags = $state(true);
   let includeRelationships = $state(true);
   let includeTimeline = $state(true);
+  let includeRaw = $state(false);
   let previewOpen = $state(false);
   let feedback = $state('');
   let feedbackTimer;
 
-  const options = $derived({ includeAnalysis, includeNotes, includeTags, includeRelationships, includeTimeline });
+  const options = $derived({
+    includeAnalysis,
+    includeNotes,
+    includeTags,
+    includeRelationships,
+    includeTimeline,
+    includeRaw: format === 'json' && includeRaw,
+  });
   const result = $derived(exportWorkspaceInvestigation(investigation, format, options));
   const markdown = $derived(exportWorkspaceInvestigation(investigation, 'markdown', options));
 
@@ -57,6 +65,9 @@
     <label><input type="checkbox" bind:checked={includeTags} /> Tags</label>
     <label><input type="checkbox" bind:checked={includeRelationships} /> Relationships and evidence</label>
     <label><input type="checkbox" bind:checked={includeTimeline} /> Timeline</label>
+    {#if format === 'json'}
+      <label><input type="checkbox" bind:checked={includeRaw} /> Raw provider responses</label>
+    {/if}
   </fieldset>
   {#if feedback}<p class="workspace-export__feedback" role="status">{feedback}</p>{/if}
   {#if format === 'markdown'}

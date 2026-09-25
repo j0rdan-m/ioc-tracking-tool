@@ -12,6 +12,7 @@ import catalog from '../../../data/tools.json' with { type: 'json' };
 import { INVESTIGATION_SOURCES, INVESTIGATION_VERDICTS } from '../investigation-history.js';
 import { formatTimestamp } from '../../utils/format-timestamp.js';
 import { getDeepLinks } from '../../utils/deep-links.js';
+import { sanitizeProviderRawResponse } from '../../utils/provider-response.js';
 import { defangIoc } from '../../utils/refang.js';
 
 /**
@@ -124,9 +125,8 @@ const IOC_TYPE_LABELS = new Map(
  * @property {string | null} summary Provider one-liner.
  * @property {string | null} message Provider message (error detail included).
  * @property {ExportModelField[]} fields Key facts returned by the provider.
- * @property {unknown} [raw] Raw provider response — present only when the
- *   `includeRaw` option is on (JSON only); always `null` for now because the
- *   application does not retain the raw payloads yet (AC12).
+ * @property {import('../../types.js').ProviderRawResponse | null} [raw] Bounded raw
+ *   provider response — present only when the JSON-only `includeRaw` option is on.
  */
 
 /**
@@ -312,9 +312,9 @@ function buildCheck(snapshot, opts, tools) {
       })),
   };
   if (opts.includeRaw) {
-    // Opt-in, JSON only. The application does not retain the raw provider
-    // responses yet, so the value stays null rather than inventing data (AC12).
-    check.raw = null;
+    // JSON-only, explicit opt-in. Sanitizing again protects exports built from
+    // session data or an injected repository that bypassed normal boundaries.
+    check.raw = sanitizeProviderRawResponse(snapshot.raw);
   }
   return check;
 }

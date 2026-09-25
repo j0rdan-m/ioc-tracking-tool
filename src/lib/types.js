@@ -162,7 +162,7 @@
  * @property {string | null} summary Provider one-liner.
  * @property {FastCheckField[]} fields Key facts returned by the provider.
  * @property {string | null} message Provider message (error detail included).
- * @property {ProviderRawResponse | null} raw Bounded raw response, when available.
+ * @property {ProviderRawResponse | null} [raw] Bounded raw response, when available.
  */
 
 /**

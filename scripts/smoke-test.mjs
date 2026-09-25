@@ -1047,6 +1047,12 @@ const exportEntry = {
           { label: 'Confidence', value: '87' },
         ],
         message: null,
+        raw: createProviderRawResponse({
+          url: 'https://api.ipapi.is/?q=176.128.43.70',
+          status: 200,
+          contentType: 'application/json',
+          body: '{"ip":"176.128.43.70","is_datacenter":true}',
+        }),
       },
       {
         id: 'ip-rdap',
@@ -1298,15 +1304,22 @@ const bareCsvHeader = exportInvestigation([exportEntry], 'csv', bareOptions).con
 if (bareCsvHeader.includes('notes') || bareCsvHeader.includes('_status')) {
   throw new Error('Export: excluded columns must be absent from CSV (AC11).');
 }
-// includeRaw (JSON only): the key appears — null, because nothing is retained.
+// includeRaw is JSON-only and explicit; the retained body is now exported.
 const rawCheck = buildExportModel([exportEntry], { ...exportOptions, includeRaw: true })
   .investigations[0].analysis.checks[0];
-if (!('raw' in rawCheck) || rawCheck.raw !== null) {
-  throw new Error('Export: includeRaw must add a null raw payload (AC12).');
+if (
+  !('raw' in rawCheck) ||
+  rawCheck.raw?.body !== '{"ip":"176.128.43.70","is_datacenter":true}' ||
+  rawCheck.raw.url !== 'https://api.ipapi.is/?q=176.128.43.70'
+) {
+  throw new Error('Export: includeRaw must include the retained bounded provider payload.');
 }
 const defaultCheck = buildExportModel([exportEntry], exportOptions).investigations[0].analysis.checks[0];
 if ('raw' in defaultCheck) {
   throw new Error('Export: raw payloads must stay opt-in (AC11).');
+}
+if (exportMd.content.includes('is_datacenter') || exportCsv.content.includes('is_datacenter')) {
+  throw new Error('Export: raw provider payloads must never leak into Markdown or CSV.');
 }
 if (
   ExportOptionsDefaults.includeAnalysis !== true ||
@@ -1995,16 +2008,33 @@ exportCase = addRelationship(exportCase, {
 exportCase = setNodeNotes(exportCase, 'domain:evil.example.com', 'Comma, quote " and\nline break', wsNow);
 exportCase = setNodeAnalysis(exportCase, 'ip:192.0.2.46', {
   checkedAt: wsNow,
-  checks: [{ id: 'fake', label: 'Fake check', toolId: 'fake-provider', status: 'ok', summary: 'OK', fields: [{ label: 'Country', value: 'FR' }], message: null }],
+  checks: [{
+    id: 'fake', label: 'Fake check', toolId: 'fake-provider', status: 'ok', summary: 'OK',
+    fields: [{ label: 'Country', value: 'FR' }], message: null,
+    raw: createProviderRawResponse({
+      url: 'https://provider.test/192.0.2.46', status: 200, contentType: 'application/json', body: '{"country":"FR"}',
+    }),
+  }],
 }, wsNow);
 exportCase = setInvestigationNotes(exportCase, 'Campaign note\nwith a line break', wsNow);
 const workspaceJson = exportWorkspaceInvestigation(exportCase, 'json', { now: wsNow });
 const workspaceJsonPayload = JSON.parse(workspaceJson.content);
+if (workspaceJson.generatedAt !== undefined) throw new Error('Workspace export: generatedAt must stay at the document root.');
 if (workspaceJsonPayload.generatedAt !== wsNow || workspaceJsonPayload.investigation.nodes.length !== 2) throw new Error('Workspace export: JSON must preserve the investigation.');
-const workspaceMarkdown = exportWorkspaceInvestigation(exportCase, 'markdown', { now: wsNow });
+if ('raw' in workspaceJsonPayload.investigation.nodes[1].analysis.checks[0]) {
+  throw new Error('Workspace export: raw provider payloads must be excluded by default.');
+}
+const workspaceJsonWithRaw = exportWorkspaceInvestigation(exportCase, 'json', { now: wsNow, includeRaw: true });
+if (JSON.parse(workspaceJsonWithRaw.content).investigation.nodes[1].analysis.checks[0].raw?.body !== '{"country":"FR"}') {
+  throw new Error('Workspace export: includeRaw must include the bounded provider payload.');
+}
+const workspaceMarkdown = exportWorkspaceInvestigation(exportCase, 'markdown', { now: wsNow, includeRaw: true });
 if (!workspaceMarkdown.content.includes('`evil[.]example[.]com`') || !workspaceMarkdown.content.includes('Fake provider')) throw new Error('Workspace export: Markdown must include defanged values and provenance.');
 if (/\]\(https?:\/\//i.test(workspaceMarkdown.content)) throw new Error('Workspace export: Markdown must not create active indicator links.');
-const workspaceCsv = exportWorkspaceInvestigation(exportCase, 'csv', { now: wsNow });
+const workspaceCsv = exportWorkspaceInvestigation(exportCase, 'csv', { now: wsNow, includeRaw: true });
+if (workspaceCsv.content.includes('"country":"FR"') || workspaceCsv.content.includes('provider.test')) {
+  throw new Error('Workspace export: raw provider payloads must never leak into CSV.');
+}
 if (!workspaceCsv.content.includes('"Comma, quote "" and\nline break"')) throw new Error('Workspace export: CSV must escape commas, quotes and line breaks.');
 const importedWorkspace = parseWorkspaceImport(workspaceJson.content);
 if (importedWorkspace.investigation.id !== exportCase.id || importedWorkspace.investigation.relationships.length !== 1 || importedWorkspace.generatedAt !== wsNow) throw new Error('Workspace import: generated JSON must round-trip locally.');

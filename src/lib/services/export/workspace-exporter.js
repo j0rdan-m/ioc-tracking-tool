@@ -9,6 +9,7 @@
 import { sanitizeSlug } from './export-model.js';
 import { formatTimestamp } from '../../utils/format-timestamp.js';
 import { escapeCell } from './csv-exporter.js';
+import { sanitizeProviderRawResponse } from '../../utils/provider-response.js';
 
 /** @typedef {import('../../types.js').WorkspaceInvestigation} WorkspaceInvestigation */
 
@@ -23,7 +24,7 @@ export const WORKSPACE_EXPORT_MIME_TYPES = Object.freeze({
  * @param {'markdown' | 'json' | 'csv'} format
  * @param {{ now?: string, includeAnalysis?: boolean, includeNotes?: boolean,
  *           includeTags?: boolean, includeRelationships?: boolean,
- *           includeTimeline?: boolean }} [options]
+ *           includeTimeline?: boolean, includeRaw?: boolean }} [options]
  * @returns {{ content: string, filename: string, mimeType: string, format: string }}
  */
 export function exportWorkspaceInvestigation(investigation, format, options = {}) {
@@ -69,8 +70,36 @@ function projectInvestigation(investigation, options) {
       ...node,
       tags: options.includeTags === false ? [] : [...node.tags],
       notes: options.includeNotes === false ? '' : node.notes,
-      analysis: options.includeAnalysis === false ? null : node.analysis,
+      analysis: options.includeAnalysis === false
+        ? null
+        : projectAnalysis(node.analysis, options.includeRaw === true),
     })),
+  };
+}
+
+/**
+ * @param {WorkspaceInvestigation['nodes'][number]['analysis']} analysis
+ * @param {boolean} includeRaw
+ * @returns {WorkspaceInvestigation['nodes'][number]['analysis']}
+ */
+function projectAnalysis(analysis, includeRaw) {
+  if (!analysis) return null;
+  return {
+    ...analysis,
+    checks: analysis.checks.map((check) => {
+      if (includeRaw) {
+        return {
+          ...check,
+          fields: check.fields.map((field) => ({ ...field })),
+          raw: sanitizeProviderRawResponse(check.raw),
+        };
+      }
+      const { raw: _raw, ...withoutRaw } = check;
+      return {
+        ...withoutRaw,
+        fields: check.fields.map((field) => ({ ...field })),
+      };
+    }),
   };
 }
 
