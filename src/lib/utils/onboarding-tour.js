@@ -4,21 +4,32 @@
  * Svelte here, so the whole flow is exercised by `npm run smoke`; the component
  * only renders what these functions return.
  *
- * A step points at a `data-tour` attribute set on real toolbar controls. When a
- * target is missing (responsive layout, a dialog opened on top), the component
- * falls back to a centered card: the tour must never block the analyst.
+ * One tour per context — the page toolbar, the Extract IoCs modal and the
+ * investigation workspace — so an analyst is guided where they actually work,
+ * and each one is remembered independently.
+ *
+ * A step points at a `data-tour` attribute set on real controls. Targets are
+ * unique per tour, so the overlay resolves them without any scoping plumbing.
+ * When a target is missing (responsive layout, a step rendered before its
+ * section exists), the component falls back to a centered card: the tour must
+ * never block the analyst.
  *
  * @typedef {{ id: string, target: string, eyebrow: string, title: string, body: string }} TourStep
+ * @typedef {'page' | 'extract' | 'workspace'} TourScope
  */
 
 /**
- * Bumped whenever the step list changes materially, so an analyst who already
- * finished an older tour can be offered the new one.
+ * Bumped per tour whenever its step list changes materially, so an analyst who
+ * already finished an older version is offered the new one.
  */
-export const TOUR_VERSION = 1;
+export const TOUR_VERSIONS = Object.freeze({
+  page: 1,
+  extract: 1,
+  workspace: 1,
+});
 
 /** @type {readonly TourStep[]} */
-export const TOUR_STEPS = Object.freeze([
+export const PAGE_TOUR = Object.freeze([
   {
     id: 'search',
     target: 'search',
@@ -77,8 +88,126 @@ export const TOUR_STEPS = Object.freeze([
   },
 ]);
 
-/** The `data-tour` selectors a step needs, in order (used by smoke coverage). */
-export const TOUR_TARGETS = Object.freeze(TOUR_STEPS.map((step) => step.target));
+/** @type {readonly TourStep[]} */
+export const EXTRACT_TOUR = Object.freeze([
+  {
+    id: 'extract-input',
+    target: 'extract-input',
+    eyebrow: 'Step 1 · Feed the extractor',
+    title: 'Paste a log, a ticket or an e-mail body',
+    body:
+      'Drop any raw text here: the extractor detects IPv4, domains, URLs, e-mails and MD5/SHA-1/SHA-256 hashes — including the deliberately defanged spellings (hxxps://evil[.]example[.]com, user[@]example[.]com) commonly used in reports. The text never leaves your browser.',
+  },
+  {
+    id: 'extract-run',
+    target: 'extract-run',
+    eyebrow: 'Step 2 · Detect and normalize',
+    title: 'One click lists every indicator',
+    body:
+      'Extract normalizes each value (defanged spellings are refanged) while keeping the exact string you pasted next to it, and collapses duplicates. Detection is deterministic and local: the count under the paste area tells you what was found.',
+  },
+  {
+    id: 'extract-selection',
+    target: 'extract-selection',
+    eyebrow: 'Step 3 · Choose what to do next',
+    title: 'Selection drives the next action',
+    body:
+      'Every fresh extraction selects all its indicators. Untick what you do not want to investigate, then either run the batch analysis or send the selection straight to an investigation workspace with “Add selected to investigation”.',
+  },
+  {
+    id: 'extract-batch',
+    target: 'extract-batch',
+    eyebrow: 'Step 4 · Batch analysis',
+    title: 'One run, every compatible check',
+    body:
+      'Analyze selected runs the keyless checks of each selected indicator in one operation, three at a time, filling a consolidated table you can stop at any moment — whatever already settled is kept. Only indicators whose type has a keyless check are analysed; the others go to the deep links.',
+  },
+  {
+    id: 'extract-list',
+    target: 'extract-list',
+    eyebrow: 'Step 5 · Work on a single indicator',
+    title: 'Copy, investigate, or go further',
+    body:
+      'Each row offers the raw, normalized and defanged forms for your report, a Fast analyze hand-off, and “Investigate” to reveal deep links. Those links stay collapsed until you click them, so no external service is ever opened by accident.',
+  },
+  {
+    id: 'extract-foot',
+    target: 'extract-foot',
+    eyebrow: 'Step 6 · What leaves your browser',
+    title: 'Extraction is local, analysis is explicit',
+    body:
+      'Extraction never sends anything. Only an explicit analysis click queries the documented keyless public APIs, one indicator at a time. The verdict stays yours: the app shows what providers answer and never decides for you. This guide replays with the “Guide” button.',
+  },
+]);
+
+/** @type {readonly TourStep[]} */
+export const WORKSPACE_TOUR = Object.freeze([
+  {
+    id: 'workspace-status',
+    target: 'workspace-status',
+    eyebrow: 'Step 1 · The investigation header',
+    title: 'Name it, qualify it, close it',
+    body:
+      'The status (open / monitoring / closed) is yours to set as the case evolves, and “Edit details” holds the name and description your report will quote. Both are saved locally in your browser, with no account and no sync.',
+  },
+  {
+    id: 'workspace-export',
+    target: 'workspace-export',
+    eyebrow: 'Step 2 · Get the case out',
+    title: 'Export the whole investigation',
+    body:
+      'Export produces JSON, Markdown or CSV of the full workspace — nodes, relationships, verdicts, notes and timeline. The JSON export can include the bounded provider responses when you explicitly ask for them. A colleague’s export can be imported back from the investigations list.',
+  },
+  {
+    id: 'workspace-tags',
+    target: 'workspace-tags',
+    eyebrow: 'Step 3 · Label the case',
+    title: 'Tags keep several cases apart',
+    body:
+      'Free-form tags (phishing, campaign-42, ticket-1234…) let you find the same investigation later from the list. They are plain strings, normalized locally, and can be removed one by one.',
+  },
+  {
+    id: 'workspace-tabs',
+    target: 'workspace-tabs',
+    eyebrow: 'Step 4 · Five views of one case',
+    title: 'Overview, Graph, Indicators, Timeline, Notes',
+    body:
+      'Overview holds the status, the counts and your verdict distribution. Graph is the pivot view. Indicators lists every observable with its verdict. Timeline records the significant actions. Notes keeps your free-form analysis. Everything you edit saves immediately.',
+  },
+  {
+    id: 'workspace-overview',
+    target: 'workspace-overview',
+    eyebrow: 'Step 5 · Read the signal, keep the verdict',
+    title: 'Heuristic signals never decide for you',
+    body:
+      'The signal score is a local, explainable heuristic computed from the normalized provider fields — it shows its contributions and reports “Not assessed” when nothing reliable is stored. It never overwrites your verdict and is recomputed at export time.',
+  },
+  {
+    id: 'workspace-indicators',
+    target: 'workspace-indicators',
+    eyebrow: 'Step 6 · Build the graph',
+    title: 'Add indicators and link them',
+    body:
+      'Indicators are deduplicated on type + normalized value, so a defanged and a plain spelling collapse into one node. Relationships are typed and qualified (observed / suspected) with their provenance; open a node in the Graph to pivot across providers from there. This guide replays with the “Guide” button.',
+  },
+]);
+
+/** Every tour, keyed by the scope that owns it. */
+export const TOURS = Object.freeze({
+  page: PAGE_TOUR,
+  extract: EXTRACT_TOUR,
+  workspace: WORKSPACE_TOUR,
+});
+
+/**
+ * The `data-tour` selectors a tour needs, in order (used by smoke coverage).
+ *
+ * @param {readonly TourStep[]} steps
+ * @returns {readonly string[]}
+ */
+export function tourTargets(steps) {
+  return Object.freeze(steps.map((step) => step.target));
+}
 
 /**
  * Keeps an index inside `[0, length - 1]`; an empty step list resolves to 0.
@@ -105,23 +234,28 @@ export function nextIndex(index, length) {
 
 /**
  * @param {number} index
+ * @param {number} length
  * @returns {number}
  */
-export function prevIndex(index) {
-  return clampIndex(index - 1, TOUR_STEPS.length);
-}
-
-/** @param {number} index @returns {boolean} */
-export function isFirstStep(index) {
-  return clampIndex(index, TOUR_STEPS.length) === 0;
+export function prevIndex(index, length) {
+  return clampIndex(index - 1, length);
 }
 
 /**
  * @param {number} index
- * @param {number} [length]
+ * @param {number} length
  * @returns {boolean}
  */
-export function isLastStep(index, length = TOUR_STEPS.length) {
+export function isFirstStep(index, length) {
+  return clampIndex(index, length) === 0;
+}
+
+/**
+ * @param {number} index
+ * @param {number} length
+ * @returns {boolean}
+ */
+export function isLastStep(index, length) {
   const total = Math.max(1, Math.trunc(length));
   return clampIndex(index, total) === total - 1;
 }
@@ -130,10 +264,10 @@ export function isLastStep(index, length = TOUR_STEPS.length) {
  * Progress readout for the step counter and the progress bar.
  *
  * @param {number} index
- * @param {number} [length]
+ * @param {number} length
  * @returns {{ current: number, total: number, percent: number }}
  */
-export function stepProgress(index, length = TOUR_STEPS.length) {
+export function stepProgress(index, length) {
   const total = Math.max(1, Math.trunc(length));
   const current = clampIndex(index, total) + 1;
   return { current, total, percent: Math.round((current / total) * 100) };
@@ -141,10 +275,10 @@ export function stepProgress(index, length = TOUR_STEPS.length) {
 
 /**
  * @param {number} index
- * @param {readonly TourStep[]} [steps]
+ * @param {readonly TourStep[]} steps
  * @returns {TourStep | null}
  */
-export function getStep(index, steps = TOUR_STEPS) {
+export function getStep(index, steps) {
   if (!Array.isArray(steps) || steps.length === 0) return null;
   return steps[clampIndex(index, steps.length)] ?? null;
 }

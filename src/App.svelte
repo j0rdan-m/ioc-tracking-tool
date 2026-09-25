@@ -14,7 +14,7 @@
   import { DI_TOKENS } from './lib/di/tokens.js';
   import { onMount, untrack } from 'svelte';
   import { detectIocType } from './lib/utils/detect-ioc-type.js';
-  import { TOUR_VERSION } from './lib/utils/onboarding-tour.js';
+  import { PAGE_TOUR, TOUR_VERSIONS } from './lib/utils/onboarding-tour.js';
   import {
     countToolsByCategory,
     countToolsByIocType,
@@ -57,7 +57,7 @@
   // First visit only: the interactive tour opens by itself and records that it
   // was completed. The "Guide" toolbar button replays it at any time.
   onMount(() => {
-    if (onboarding.shouldAutoOpen(TOUR_VERSION)) {
+    if (onboarding.shouldAutoOpen('page', TOUR_VERSIONS.page)) {
       tourOpen = true;
     }
   });
@@ -300,7 +300,7 @@
 
   <!-- Mounted outside the catalog await: the tour must also work when the
        catalog fails to load (the card then falls back to a centered layout). -->
-  <OnboardingTour bind:open={tourOpen} />
+  <OnboardingTour bind:open={tourOpen} steps={PAGE_TOUR} scope="page" />
 
   <footer class="footer">
     <p>

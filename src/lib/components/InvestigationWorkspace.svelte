@@ -1,4 +1,6 @@
 <script>
+  import { inject } from '../di/provide.js';
+  import { DI_TOKENS } from '../di/tokens.js';
   import GraphNodeDetails from './GraphNodeDetails.svelte';
   import GraphRelationDetails from './GraphRelationDetails.svelte';
   import WorkspaceExportPanel from './WorkspaceExportPanel.svelte';
@@ -6,6 +8,7 @@
   import InvestigationNotes from './InvestigationNotes.svelte';
   import InvestigationOverview from './InvestigationOverview.svelte';
   import InvestigationTimeline from './InvestigationTimeline.svelte';
+  import OnboardingTour from './OnboardingTour.svelte';
   import {
     addNode,
     addRelationship,
@@ -16,6 +19,7 @@
     setStatus,
   } from '../services/workspace/investigation-model.js';
   import { normalizeTag } from '../utils/history-filter.js';
+  import { TOUR_VERSIONS, WORKSPACE_TOUR } from '../utils/onboarding-tour.js';
   import { STATUS_LABELS } from '../utils/workspace-view.js';
 
   /** @type {{ investigation: import('../types.js').WorkspaceInvestigation,
@@ -24,6 +28,9 @@
    *           onSave: (next: import('../types.js').WorkspaceInvestigation) => Promise<void>,
    *           onAnalyze: (normalized: string) => void }} */
   let { investigation, catalog, onBack, onSave, onAnalyze } = $props();
+
+  /** @type {import('../services/onboarding.js').OnboardingService} */
+  const onboarding = inject(DI_TOKENS.onboarding);
 
   /** @type {'overview' | 'graph' | 'indicators' | 'timeline' | 'notes'} */
   let tab = $state('overview');
@@ -43,6 +50,7 @@
   let selectedRelationshipId = $state(null);
   let saving = $state(false);
   let error = $state('');
+  let tourOpen = $state(false);
 
   const selectedNode = $derived(
     selectedNodeId === null ? null : investigation.nodes.find((node) => node.id === selectedNodeId) ?? null,
@@ -138,6 +146,20 @@
     selectedNodeId = null;
     selectedRelationshipId = null;
   }
+
+  // The contextual guide opens on the first workspace the analyst enters, then
+  // only on an explicit click on its "Guide" button. `investigation.id` is the
+  // dependency: it re-evaluates when another investigation is opened, so the
+  // check happens once per entry — the flag itself is what keeps it quiet.
+  let tourCheckedFor = null;
+  $effect(() => {
+    const currentId = investigation.id;
+    if (tourCheckedFor === currentId) return;
+    tourCheckedFor = currentId;
+    if (onboarding.shouldAutoOpen('workspace', TOUR_VERSIONS.workspace)) {
+      tourOpen = true;
+    }
+  });
 </script>
 
 <section class="workspace" aria-label="Investigation workspace">
@@ -149,7 +171,7 @@
         {STATUS_LABELS[investigation.status]}
       </span>
     </div>
-    <div class="workspace__head-actions">
+    <div class="workspace__head-actions" data-tour="workspace-status">
       <label>
         Status
         <select
@@ -168,7 +190,12 @@
       <button type="button" onclick={() => (showInfo = !showInfo)}>
         {showInfo ? 'Close details' : 'Edit details'}
       </button>
-      <button type="button" onclick={() => (showExport = !showExport)}>Export</button>
+      <button type="button" data-tour="workspace-export" onclick={() => (showExport = !showExport)}>
+        Export
+      </button>
+      <button type="button" onclick={() => (tourOpen = true)} title="Replay the interactive guide">
+        ❔ Guide
+      </button>
     </div>
   </header>
 
@@ -180,7 +207,7 @@
     </div>
   {/if}
 
-  <div class="tags" aria-label="Investigation tags">
+  <div class="tags" aria-label="Investigation tags" data-tour="workspace-tags">
     {#each investigation.tags as tag (tag)}
       <span>
         {tag}<button type="button" aria-label={`Remove ${tag}`} onclick={() => removeTag(tag)}>×</button>
@@ -202,7 +229,7 @@
     <WorkspaceExportPanel investigation={investigation} title="Export workspace" onExported={(format) => commit(recordTimelineEvent(investigation, { type: 'export_created', label: `Workspace exported (${format})` }, null))} />
   {/if}
 
-  <nav class="tabs" aria-label="Investigation sections">
+  <nav class="tabs" aria-label="Investigation sections" data-tour="workspace-tabs">
     {#each [
       ['overview', 'Overview'],
       ['graph', 'Graph'],
@@ -250,7 +277,7 @@
       {/if}
     </div>
   {:else if tab === 'indicators'}
-    <section class="indicators" aria-labelledby="indicators-heading">
+    <section class="indicators" aria-labelledby="indicators-heading" data-tour="workspace-indicators">
       <div class="indicators__head">
         <div>
           <h3 id="indicators-heading">Indicators</h3>
@@ -319,6 +346,8 @@
     <InvestigationNotes {investigation} onSave={commit} />
   {/if}
 </section>
+
+<OnboardingTour bind:open={tourOpen} steps={WORKSPACE_TOUR} scope="workspace" />
 
 <style>
   .workspace {

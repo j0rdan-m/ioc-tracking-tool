@@ -12,7 +12,7 @@
   const updated = $derived(formatTimestamp(investigation.updatedAt));
 </script>
 
-<section class="overview" aria-labelledby="overview-heading">
+<section class="overview" aria-labelledby="overview-heading" data-tour="workspace-overview">
   <h3 id="overview-heading">Investigation</h3>
   <p class="overview__description">{investigation.description || 'No description yet.'}</p>
   <div class="overview__grid">

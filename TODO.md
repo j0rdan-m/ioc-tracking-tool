@@ -47,6 +47,21 @@
   placement geometry) + `services/onboarding.js` (versioned localStorage flag) wired through
   `DI_TOKENS.onboarding`, smoke coverage including the `data-tour` target check, README updated.
 
+## V2.3 — Contextual onboarding tours
+
+- [x] **Lot 1 — reusable overlay**: `OnboardingTour.svelte` now takes a `steps` list and a `scope`
+  (per-scope DOM ids), so one component drives every tour; the page tour is unchanged for the user.
+- [x] **Lot 2 — Extract IoCs tour**: 6 steps (paste, Extract, selection bar & *Add to
+  investigation*, batch analysis, IoC list, what leaves the browser), auto-opened on the first
+  opening of the modal, with a Guide button in the dialog header; Escape is owned by the tour while
+  it is open.
+- [x] **Lot 3 — Workspace tour**: 6 steps (status & details, Export, tags, the five tabs, signal
+  summary, indicators & relationships), auto-opened on the first workspace entered, with a Guide
+  button in the investigation header.
+- [x] **Lot 4 — per-scope persistence**: one localStorage record per scope, independent flags,
+  scoped `reset()`, and migration of the V2.2 flat record to the `page` scope. Smoke coverage over
+  the three step lists, target uniqueness/existence, navigation, placement and persistence.
+
 ## V2 scope boundaries
 
 Hors périmètre V2/V2.1 : PDF/Word, export PNG/SVG du graphe, backend, comptes, sync

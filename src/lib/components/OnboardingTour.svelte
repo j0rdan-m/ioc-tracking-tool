@@ -2,8 +2,7 @@
   import { inject } from '../di/provide.js';
   import { DI_TOKENS } from '../di/tokens.js';
   import {
-    TOUR_STEPS,
-    TOUR_VERSION,
+    TOUR_VERSIONS,
     computeTourLayout,
     getStep,
     isFirstStep,
@@ -15,16 +14,19 @@
 
   /**
    * First-visit onboarding tour: a spotlight overlay walking through the real
-   * toolbar controls. Opens by itself when the local storage holds no completed
-   * tour, and can be replayed any time from the "Guide" button (App binds `open`).
+   * controls of one context. The same component drives every tour (page
+   * toolbar, Extract IoCs modal, investigation workspace): it receives the step
+   * list and the `scope` key under which its completion is stored, and can be
+   * replayed any time by the owner (App, the modal, the workspace).
    *
    * The component only measures the DOM and applies what the pure helpers return,
-   * so the step list, the navigation and the placement geometry stay testable in
-   * `npm run smoke`.
+   * so the step lists, the navigation and the placement geometry stay testable
+   * in `npm run smoke`.
    *
-   * @type {{ open?: boolean }}
+   * @type {{ open?: boolean, steps: readonly import('../utils/onboarding-tour.js').TourStep[],
+   *           scope: import('../utils/onboarding-tour.js').TourScope }}
    */
-  let { open = $bindable(false) } = $props();
+  let { open = $bindable(false), steps, scope } = $props();
 
   /** @type {import('../services/onboarding.js').OnboardingService} */
   const onboarding = inject(DI_TOKENS.onboarding);
@@ -37,10 +39,13 @@
   /** @type {HTMLDivElement | undefined} */
   let card = $state();
 
-  const step = $derived(getStep(index));
-  const first = $derived(isFirstStep(index));
-  const last = $derived(isLastStep(index));
-  const progress = $derived(stepProgress(index));
+  // Per-scope ids: several tours can be mounted in the same page.
+  const titleId = $derived(`tour-title-${scope}`);
+
+  const step = $derived(getStep(index, steps));
+  const first = $derived(isFirstStep(index, steps.length));
+  const last = $derived(isLastStep(index, steps.length));
+  const progress = $derived(stepProgress(index, steps.length));
   const layout = $derived(
     computeTourLayout(targetRect, viewport, cardSize, { offset: 16, margin: 16 }),
   );
@@ -103,19 +108,19 @@
 
   function finish() {
     open = false;
-    onboarding.markSeen(TOUR_VERSION);
+    onboarding.markSeen(scope, TOUR_VERSIONS[scope]);
   }
 
   function goNext() {
-    if (isLastStep(index)) {
+    if (isLastStep(index, steps.length)) {
       finish();
       return;
     }
-    index = nextIndex(index, TOUR_STEPS.length);
+    index = nextIndex(index, steps.length);
   }
 
   function goPrevious() {
-    index = prevIndex(index);
+    index = prevIndex(index, steps.length);
   }
 
   /** @param {KeyboardEvent} event */
@@ -142,7 +147,7 @@
     class="tour"
     role="dialog"
     aria-modal="true"
-    aria-labelledby="tour-title"
+    aria-labelledby={titleId}
     tabindex="-1"
     onkeydown={onKeydown}
   >
@@ -178,7 +183,7 @@
         </button>
       </div>
 
-      <h2 class="tour__title" id="tour-title">{step.title}</h2>
+      <h2 class="tour__title" id={titleId}>{step.title}</h2>
       <p class="tour__body" aria-live="polite">{step.body}</p>
 
       <div class="tour__progress">

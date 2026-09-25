@@ -223,26 +223,35 @@ npm run preview   # serve the production build locally
 | [Have I Been Pwned](https://haveibeenpwned.com/) | Threat intelligence | Reference breach database (emails, domains, passwords) |
 | [UserSearch](https://usersearch.com/) | Threat intelligence | Username lookup across social networks & forums |
 
-## Interactive onboarding (V2.2)
+## Interactive onboarding (V2.2 / V2.3)
 
-On a first visit the app opens a **spotlight tour** that walks through the real toolbar: search
-and IoC detection, Fast analyze, Extract IoCs, the investigation **workspaces**, History, email
-headers and Favorites. Each step dims the page, highlights the control it describes and shows a
-card with the explanation, the progress and the navigation (**Back / Next / Skip**, or the
-keyboard: <kbd>←</kbd> <kbd>→</kbd> <kbd>Esc</kbd>).
+On a first visit the app opens a **spotlight tour** that walks through the real controls. The same
+overlay is reused in three contexts, each with its own steps and its own completion flag:
 
-- **Automatic on first visit**, replayable at any time with the **❔ Guide** toolbar button. The
-  completion flag lives in localStorage under `ioc-toolkit:onboarding` (in-memory fallback when
-  storage is unavailable), so nothing is sent anywhere and clearing the browser data brings the
-  tour back. A tour recorded for an older step list is offered again — bump `TOUR_VERSION` in
-  `src/lib/utils/onboarding-tour.js` when the steps change materially.
-- **The step list and the layout are pure**: `src/lib/utils/onboarding-tour.js` holds the copy and
+| Scope | Where it opens | What it covers |
+| --- | --- | --- |
+| `page` | On page load | Search & IoC detection, Fast analyze, Extract IoCs, Workspaces, History, email headers, Favorites |
+| `extract` | On the first opening of the **Extract IoCs** modal | Paste, Extract, the selection bar & *Add to investigation*, batch analysis, the IoC list, what leaves the browser |
+| `workspace` | On the first workspace entered | Status & details, Export, tags, the five tabs, the signal summary, indicators & relationships |
+
+Each step dims the page, highlights the control it describes and shows a card with the
+explanation, the progress and the navigation (**Back / Next / Skip**, or the keyboard: <kbd>←</kbd>
+<kbd>→</kbd> <kbd>Esc</kbd>). Every context has its own **❔ Guide** button to replay its tour.
+
+- **Automatic on first visit of the context**, then only on an explicit click. The completion flags
+  live in localStorage under `ioc-toolkit:onboarding`, as one record per scope, with an in-memory
+  fallback when storage is unavailable. Completing one tour never silences the others, and a tour
+  recorded for an older step list is offered again — bump its version in `TOUR_VERSIONS`
+  (`src/lib/utils/onboarding-tour.js`) when its steps change materially. The V2.2 single-record
+  format is migrated to the `page` scope, so an existing analyst is not asked to redo the page tour.
+- **The step lists and the layout are pure**: `src/lib/utils/onboarding-tour.js` holds the copy and
   the card placement geometry (below → above → right → left, always clamped to the viewport).
-  `src/lib/components/OnboardingTour.svelte` only measures the DOM (`data-tour` attributes,
-  re-measured on scroll, resize and catalog load) and applies what the helpers return. A target
-  that cannot be measured falls back to a centered card, so the tour can never trap the analyst.
-- The tour follows the project rules: factual wording only, no automatic verdict, no link is
-  opened or fetched automatically.
+  `src/lib/components/OnboardingTour.svelte` receives a `steps` list and a `scope`, and only
+  measures the DOM (`data-tour` attributes, re-measured on scroll, resize and content changes) and
+  applies what the helpers return. Targets are unique across tours, and a target that cannot be
+  measured falls back to a centered card, so a tour never traps the analyst.
+- The tours follow the project rules: factual wording only, no automatic verdict, no link is opened
+  or fetched automatically.
 
 ## Investigation workspace (V2)
 
@@ -317,7 +326,7 @@ src/
       tool-repository.js          # read-side repository over the catalog
       clipboard.js                # copy-to-clipboard with legacy fallback
       favorites.js                # starred tools persisted in localStorage
-      onboarding.js               # V2.2 first-visit tour flag (localStorage, versioned)
+      onboarding.js               # V2.2 first-visit tour flags (localStorage, per scope)
       download.js                 # Blob → local file download (US V1.5, no network)
       export/                     # US V1.5 + V2 export pipelines (Markdown/JSON/CSV)
       investigation-history.js     # V1.3 per-IoC history (localStorage)
@@ -330,7 +339,7 @@ src/
     utils/                    # pure helpers (refang/defang, IoC extraction, batch analysis, filtering, colors)
        provider-response.js    # bounded, inert provider response helpers
        signal-score.js         # versioned, explainable local heuristic
-       onboarding-tour.js      # V2.2 tour steps, navigation and card placement geometry
+       onboarding-tour.js      # V2.2/2.3 tours: steps, navigation, card placement geometry
        refang.js, extract-iocs.js, batch-analyze.js, history-filter.js
     components/               # Svelte UI components
   App.svelte                  # page layout & state

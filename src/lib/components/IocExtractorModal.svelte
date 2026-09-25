@@ -3,12 +3,14 @@
   import { DI_TOKENS } from '../di/tokens.js';
   import ExportPanel from './ExportPanel.svelte';
   import AddToInvestigation from './AddToInvestigation.svelte';
+  import OnboardingTour from './OnboardingTour.svelte';
   import ProviderRawResponse from './ProviderRawResponse.svelte';
   import SignalScore from './SignalScore.svelte';
   import { computeBatchStatus, runBatchAnalysis } from '../utils/batch-analyze.js';
   import { extractIocs } from '../utils/extract-iocs.js';
   import { getDeepLinks } from '../utils/deep-links.js';
   import { buildAnalysisSnapshot } from '../utils/history-filter.js';
+  import { EXTRACT_TOUR, TOUR_VERSIONS } from '../utils/onboarding-tour.js';
   import { scoreInvestigationAnalysis } from '../utils/signal-score.js';
 
   /**
@@ -36,6 +38,10 @@
   const analyzer = inject(DI_TOKENS.fastAnalyzer);
   /** @type {import('../services/investigation-history.js').InvestigationHistoryService} */
   const history = inject(DI_TOKENS.investigations);
+  /** @type {import('../services/onboarding.js').OnboardingService} */
+  const onboarding = inject(DI_TOKENS.onboarding);
+
+  let tourOpen = $state(false);
 
   let text = $state('');
   /** @type {import('../utils/extract-iocs.js').ExtractIocsResult | null} */
@@ -469,7 +475,8 @@
 
   /** @param {KeyboardEvent} event */
   function onKeydown(event) {
-    if (event.key === 'Escape') {
+    // While the guide is open it owns Escape (it closes the tour, not the modal).
+    if (event.key === 'Escape' && !tourOpen) {
       close();
     }
   }
@@ -484,6 +491,17 @@
 
   $effect(() => {
     if (!open) {
+      return;
+    }
+    // The contextual guide opens on the first visit of this modal, then only on
+    // an explicit click on its "Guide" button.
+    if (onboarding.shouldAutoOpen('extract', TOUR_VERSIONS.extract)) {
+      tourOpen = true;
+    }
+  });
+
+  $effect(() => {
+    if (!open || tourOpen) {
       return;
     }
     textareaEl?.focus();
@@ -512,7 +530,17 @@
           <p class="modal__eyebrow">🔍 Extract IoCs</p>
           <h2 id="extract-iocs-title" class="modal__title">Pull indicators out of a pasted text</h2>
         </div>
-        <button type="button" class="modal__close" aria-label="Close" onclick={close}>✕</button>
+        <div class="extract-head-actions">
+          <button
+            type="button"
+            class="extract-guide"
+            onclick={() => (tourOpen = true)}
+            title="Replay the interactive guide"
+          >
+            ❔ Guide
+          </button>
+          <button type="button" class="modal__close" aria-label="Close" onclick={close}>✕</button>
+        </div>
       </header>
 
       <p class="modal__hint">
@@ -531,13 +559,14 @@
           bind:this={textareaEl}
           bind:value={text}
           class="modal__textarea"
+          data-tour="extract-input"
           rows="7"
           placeholder={'176.128.43.70\nexample[.]com\nhxxps://evil[.]example[.]com/login\nuser[@]example[.]com\n44d88612fea8a8f36de82e1278abb02f'}
           aria-label="Text to analyze"
           spellcheck="false"
           onkeydown={onTextareaKeydown}
         ></textarea>
-        <div class="modal__form-actions">
+        <div class="modal__form-actions" data-tour="extract-run">
           <button type="submit" class="modal__start" disabled={text.trim() === ''}>Extract</button>
           <button type="button" class="modal__clear" onclick={clearAll} disabled={text === '' && !result}>
             Clear
@@ -559,7 +588,7 @@
           </p>
 
           <!-- Selection: what the next batch will analyse (all by default). -->
-          <div class="batch__bar">
+          <div class="batch__bar" data-tour="extract-selection">
             <span class="batch__selected" role="status">
               {selectedIds.length}
               IoC selected
@@ -575,6 +604,7 @@
             <button
               type="button"
               class="ioc__analyze"
+              data-tour="extract-batch"
               disabled={selectedIds.length === 0 || analysisRunning}
               title="Run the compatible keyless checks for every selected IoC"
               onclick={analyzeSelected}
@@ -588,7 +618,7 @@
             {/if}
           </div>
 
-          <ul class="iocs" aria-label="Extracted indicators">
+          <ul class="iocs" aria-label="Extracted indicators" data-tour="extract-list">
             {#each result.iocs as ioc (ioc.id)}
               <li class="ioc">
                 <div class="ioc__head">
@@ -883,10 +913,11 @@
       {#if showAddToInvestigation}
         <AddToInvestigation bind:open={showAddToInvestigation} indicators={addToInvestigationInputs} source="extracted-text" />
       {/if}
-      <p class="modal__foot">
+      <p class="modal__foot" data-tour="extract-foot">
         Extraction runs entirely in this browser: the pasted text is never sent to any API. External
         links only open on an explicit click.
       </p>
+      <OnboardingTour bind:open={tourOpen} steps={EXTRACT_TOUR} scope="extract" />
     </div>
   </div>
 {/if}
@@ -1054,6 +1085,31 @@
     margin: var(--space-1) 0 0;
     font-size: var(--font-size-2xs);
     color: var(--color-text-muted);
+  }
+
+  /* Guide button + close button share the dialog header row. */
+  .extract-head-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .extract-guide {
+    padding: var(--space-2) var(--space-3);
+    font: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-muted);
+    background: transparent;
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: var(--transition-colors);
+  }
+
+  .extract-guide:hover {
+    color: var(--color-text);
+    border-color: var(--color-accent);
   }
 
   /* ---------- Selection & batch analysis ---------- */
