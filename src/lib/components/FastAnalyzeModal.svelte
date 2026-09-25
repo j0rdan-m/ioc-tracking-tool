@@ -3,6 +3,8 @@
   import { inject } from '../di/provide.js';
   import { DI_TOKENS } from '../di/tokens.js';
   import ExportPanel from './ExportPanel.svelte';
+  import ProviderRawResponse from './ProviderRawResponse.svelte';
+  import SignalScore from './SignalScore.svelte';
   import { detectIocType } from '../utils/detect-ioc-type.js';
   import { getDeepLinks } from '../utils/deep-links.js';
   import { buildAnalysisSnapshot } from '../utils/history-filter.js';
@@ -60,6 +62,9 @@
   );
   // Live preview of the detected type while the user types (before Start).
   const detectedPreview = $derived(detectIocType(value));
+  const completedAnalysis = $derived(
+    finishedAt === '' ? null : buildAnalysisSnapshot(checks, finishedAt),
+  );
 
   /** @type {HTMLInputElement | undefined} */
   let inputEl = $state();
@@ -364,10 +369,15 @@
                     {check.result.message}
                   </p>
                 {/if}
+                <ProviderRawResponse raw={check.result.raw} />
               {/if}
             </li>
           {/each}
         </ul>
+      {/if}
+
+      {#if completedAnalysis}
+        <SignalScore analysis={completedAnalysis} />
       {/if}
 
       {#if deepLinks.length > 0}

@@ -12,6 +12,16 @@
 
 import { createProviderRawResponse } from '../utils/provider-response.js';
 
+/** Error carrying a bounded response body for the UI/export boundary. */
+class ProviderResponseError extends Error {
+  /** @param {string} message @param {import('../types.js').ProviderRawResponse} raw */
+  constructor(message, raw) {
+    super(message);
+    this.name = 'ProviderResponseError';
+    this.raw = raw;
+  }
+}
+
 /**
  * @typedef {Object} FastCheckField
  * @property {string} label Field label.
@@ -123,7 +133,7 @@ export class FastAnalyzerService {
             summary: null,
             fields: [],
             message: describeError(error),
-            raw: null,
+            raw: error instanceof ProviderResponseError ? error.raw : null,
           };
         }
       },
@@ -145,33 +155,30 @@ export class FastAnalyzerService {
     signal?.addEventListener('abort', onExternalAbort, { once: true });
     try {
       const response = await this.#fetch(url, { signal: controller.signal, headers });
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('HTTP 404 — not found');
-        }
-        if (response.status === 403) {
-          throw new Error('HTTP 403 — blocked by the provider');
-        }
-        throw new Error(`HTTP ${response.status}`);
-      }
       const body = typeof response.text === 'function'
         ? await response.text()
         : JSON.stringify(await response.json());
+      const raw = createProviderRawResponse({
+        url,
+        status: response.status,
+        contentType: response.headers?.get?.('content-type') ?? null,
+        body,
+      });
+      if (!response.ok) {
+        const message = response.status === 404
+          ? 'HTTP 404 — not found'
+          : response.status === 403
+            ? 'HTTP 403 — blocked by the provider'
+            : `HTTP ${response.status}`;
+        throw new ProviderResponseError(message, raw);
+      }
       let data;
       try {
         data = JSON.parse(body);
       } catch {
-        throw new Error('The provider returned invalid JSON.');
+        throw new ProviderResponseError('The provider returned invalid JSON.', raw);
       }
-      return {
-        data,
-        raw: createProviderRawResponse({
-          url,
-          status: response.status,
-          contentType: response.headers?.get?.('content-type') ?? null,
-          body,
-        }),
-      };
+      return { data, raw };
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener('abort', onExternalAbort);

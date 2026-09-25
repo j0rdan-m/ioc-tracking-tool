@@ -10,6 +10,7 @@ import { sanitizeSlug } from './export-model.js';
 import { formatTimestamp } from '../../utils/format-timestamp.js';
 import { escapeCell } from './csv-exporter.js';
 import { sanitizeProviderRawResponse } from '../../utils/provider-response.js';
+import { scoreInvestigationAnalysis } from '../../utils/signal-score.js';
 
 /** @typedef {import('../../types.js').WorkspaceInvestigation} WorkspaceInvestigation */
 
@@ -66,14 +67,23 @@ function projectInvestigation(investigation, options) {
     notes: options.includeNotes === false ? '' : investigation.notes,
     relationships: options.includeRelationships === false ? [] : [...investigation.relationships],
     timeline: options.includeTimeline === false ? [] : [...investigation.timeline],
-    nodes: investigation.nodes.map((node) => ({
-      ...node,
-      tags: options.includeTags === false ? [] : [...node.tags],
-      notes: options.includeNotes === false ? '' : node.notes,
-      analysis: options.includeAnalysis === false
-        ? null
-        : projectAnalysis(node.analysis, options.includeRaw === true),
-    })),
+    nodes: investigation.nodes.map((node) => {
+      if (options.includeAnalysis === false) {
+        return {
+          ...node,
+          tags: options.includeTags === false ? [] : [...node.tags],
+          notes: options.includeNotes === false ? '' : node.notes,
+          analysis: null,
+        };
+      }
+      return {
+        ...node,
+        tags: options.includeTags === false ? [] : [...node.tags],
+        notes: options.includeNotes === false ? '' : node.notes,
+        analysis: projectAnalysis(node.analysis, options.includeRaw === true),
+        signalScore: scoreInvestigationAnalysis(node.analysis),
+      };
+    }),
   };
 }
 
@@ -126,6 +136,11 @@ function markdownDocument(investigation, generatedAt, options) {
   for (const node of investigation.nodes) {
     lines.push(`### \`${node.defanged}\``, '', `- Type: ${node.typeId}`, `- Analyst verdict: ${node.verdict}`, `- Source: ${node.source}`);
     if (includeAnalysis && node.analysis) {
+      const signal = scoreInvestigationAnalysis(node.analysis);
+      lines.push(`- Signal: ${signal.label}${signal.score === null ? '' : ` · ${signal.score}/100`}`);
+      if (signal.assessed) {
+        lines.push(`- Signal rationale: ${signal.contributions.map((contribution) => `${contribution.label} (+${contribution.points})`).join(' · ')}`);
+      }
       lines.push(`- Analysis: ${node.analysis.checks.map((check) => `${check.label} (${check.status})`).join(', ') || 'No result'}`);
     }
     if (includeNotes && node.notes) lines.push('', '#### Analyst notes', '', node.notes);
@@ -147,17 +162,26 @@ function markdownDocument(investigation, generatedAt, options) {
 
 function csvDocument(investigation, generatedAt, options) {
   const includeNotes = options.includeNotes !== false;
-  const columns = ['ioc', 'type', 'verdict', 'source', 'seed', 'depth', 'tags', 'analysis_status', 'notes'];
-  const rows = investigation.nodes.map((node) => [
-    node.defanged,
-    node.typeId,
-    node.verdict,
-    node.source,
-    String(node.seed),
-    String(node.depth),
-    node.tags.join(';'),
-    node.analysis ? node.analysis.checks.map((check) => `${check.id}:${check.status}`).join('|') : '',
-    includeNotes ? node.notes : '',
-  ]);
+  const columns = ['ioc', 'type', 'verdict', 'source', 'seed', 'depth', 'tags'];
+  if (options.includeAnalysis !== false) {
+    columns.push('signal', 'signal_score');
+  }
+  columns.push('analysis_status', 'notes');
+  const rows = investigation.nodes.map((node) => {
+    const signal = scoreInvestigationAnalysis(node.analysis);
+    return [
+      node.defanged,
+      node.typeId,
+      node.verdict,
+      node.source,
+      String(node.seed),
+      String(node.depth),
+      node.tags.join(';'),
+      options.includeAnalysis === false ? '' : signal.level,
+      options.includeAnalysis === false ? '' : String(signal.score ?? ''),
+      node.analysis ? node.analysis.checks.map((check) => `${check.id}:${check.status}`).join('|') : '',
+      includeNotes ? node.notes : '',
+    ];
+  });
   return [columns.join(','), ...rows.map((row) => row.map((value) => escapeCell(String(value))).join(','))].join('\n') + '\n';
 }

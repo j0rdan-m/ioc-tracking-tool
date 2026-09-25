@@ -34,7 +34,11 @@ export function csvExporter(model) {
  */
 function baseColumns(model) {
   const hasNotes = model.investigations.some((inv) => inv.analyst?.notes !== undefined);
+  const hasSignal = model.investigations.some((inv) => 'signalScore' in inv);
   const base = ['ioc', 'type', 'raw', 'normalized', 'defanged', 'first_analyzed', 'last_analyzed', 'verdict', 'source', 'tags'];
+  if (hasSignal) {
+    base.push('signal', 'signal_score');
+  }
   const statuses = collectStatuses(model);
   const fields = collectFields(model);
   const columns = [...base, ...statuses];
@@ -132,6 +136,10 @@ function readCell(investigation, column) {
     case 'tags':
       // Tags join on `;` (US example: `phishing;customer-incident`).
       return Array.isArray(analyst.tags) ? analyst.tags.join(';') : '';
+    case 'signal':
+      return investigation.signalScore?.level ?? '';
+    case 'signal_score':
+      return investigation.signalScore?.score ?? '';
     case 'notes':
       return typeof analyst.notes === 'string' ? analyst.notes : '';
     default:

@@ -6,7 +6,10 @@
   import { analyzeHeaders } from '../utils/email-header-analyzer.js';
   import { extractIocs } from '../utils/extract-iocs.js';
   import { buildAnalysisSnapshot } from '../utils/history-filter.js';
+  import { scoreInvestigationAnalysis } from '../utils/signal-score.js';
   import AddToInvestigation from './AddToInvestigation.svelte';
+  import ProviderRawResponse from './ProviderRawResponse.svelte';
+  import SignalScore from './SignalScore.svelte';
 
   /**
    * "Analyze email headers" modal: local RFC 5322 header parsing → auth
@@ -150,6 +153,7 @@
   // Ids already written to the local history during the current batch.
   /** @type {Set<string>} */
   const recordedIds = new Set();
+  let batchFinishedAt = $state('');
 
   /** Check states considered final for the progress gauge. */
   /** @type {import('../types.js').BatchCheckStatus[]} */
@@ -174,6 +178,19 @@
     error: 'Error',
     cancelled: 'Cancelled',
   };
+
+  /**
+   * @param {import('../types.js').BatchRow} row
+   * @returns {import('../types.js').InvestigationAnalysisSnapshot}
+   */
+  function rowAnalysis(row) {
+    return buildAnalysisSnapshot(row.checkStates, batchFinishedAt || new Date().toISOString());
+  }
+
+  /** @param {import('../types.js').BatchRow} row */
+  function rowSignal(row) {
+    return scoreInvestigationAnalysis(rowAnalysis(row));
+  }
 
   /**
    * Records every row that reached a final state in the local investigation
@@ -212,6 +229,7 @@
     recordedIds.clear();
     detailIds = [];
     batchRows = [];
+    batchFinishedAt = '';
     stopping = false;
     analysisRunning = true;
     const run = runBatchAnalysis(
@@ -233,6 +251,7 @@
       if (generation !== batchGeneration) {
         return;
       }
+      batchFinishedAt = new Date().toISOString();
       analysisRunning = false;
       stopping = false;
       batchRun = null;
@@ -766,12 +785,14 @@
                     <tr>
                       <th scope="col">IoC</th>
                       <th scope="col">Type</th>
+                      <th scope="col">Signal</th>
                       <th scope="col">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {#each batchRows as row (row.ioc.id)}
                       {@const status = computeBatchStatus(row.checkStates)}
+                      {@const signal = rowSignal(row)}
                       <tr>
                         <td class="batch__ioc">
                           <button
@@ -788,6 +809,15 @@
                         <td>
                           <span
                             class="batch__status"
+                            class:batch__status--ok={signal.level === 'low'}
+                            class:batch__status--warn={signal.level === 'medium'}
+                            class:batch__status--bad={signal.level === 'high'}
+                            >{signal.label}{signal.score === null ? '' : ` · ${signal.score}`}</span
+                          >
+                        </td>
+                        <td>
+                          <span
+                            class="batch__status"
                             class:batch__status--ok={status === 'Complete'}
                             class:batch__status--warn={status === 'Partial'}
                             class:batch__status--bad={status === 'Error'}>{status}</span
@@ -796,12 +826,13 @@
                       </tr>
                       {#if detailIds.includes(row.ioc.id)}
                         <tr class="batch__detail">
-                          <td colspan="3">
+                          <td colspan="4">
                             {#if row.checkStates.length === 0}
                               <p class="eh__hint">
                                 No automated check available for this indicator type.
                               </p>
                             {:else}
+                              <SignalScore analysis={rowAnalysis(row)} />
                               <ul class="checks" aria-label={`Checks for ${row.ioc.normalized}`}>
                                 {#each row.checkStates as check (check.def.id)}
                                   <li class="check">
@@ -824,6 +855,7 @@
                                     {#if check.result?.summary}
                                       <p class="check__summary">{check.result.summary}</p>
                                     {/if}
+                                    <ProviderRawResponse raw={check.result?.raw} />
                                   </li>
                                 {/each}
                               </ul>

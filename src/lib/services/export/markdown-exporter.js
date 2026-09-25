@@ -78,6 +78,16 @@ function sectionBlocks(investigation) {
       parts.push(`- ${tag}`);
     }
   }
+  if (investigation.signalScore) {
+    const signal = investigation.signalScore;
+    parts.push(
+      '',
+      `**Signal:** ${signal.label}${signal.score === null ? '' : ` · ${signal.score}/100`} (heuristic, not a verdict)`,
+    );
+    if (signal.assessed && signal.contributions.length > 0) {
+      parts.push(`**Signal rationale:** ${signal.contributions.map((contribution) => `${contribution.label} (+${contribution.points})`).join(' · ')}`);
+    }
+  }
   if (investigation.analysis !== undefined && investigation.analysis !== null) {
     parts.push('', '## Analysis results');
     parts.push(...analysisLines(investigation.analysis));

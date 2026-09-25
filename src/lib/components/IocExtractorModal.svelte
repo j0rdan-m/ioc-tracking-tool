@@ -3,10 +3,13 @@
   import { DI_TOKENS } from '../di/tokens.js';
   import ExportPanel from './ExportPanel.svelte';
   import AddToInvestigation from './AddToInvestigation.svelte';
+  import ProviderRawResponse from './ProviderRawResponse.svelte';
+  import SignalScore from './SignalScore.svelte';
   import { computeBatchStatus, runBatchAnalysis } from '../utils/batch-analyze.js';
   import { extractIocs } from '../utils/extract-iocs.js';
   import { getDeepLinks } from '../utils/deep-links.js';
   import { buildAnalysisSnapshot } from '../utils/history-filter.js';
+  import { scoreInvestigationAnalysis } from '../utils/signal-score.js';
 
   /**
    * "Extract IoCs" modal: paste a whole text (log, ticket, e-mail body) and the
@@ -167,6 +170,19 @@
    */
   function fieldValue(state, label) {
     return state?.result?.fields?.find((field) => field.label === label)?.value ?? null;
+  }
+
+  /**
+   * @param {import('../types.js').BatchRow} row
+   * @returns {import('../types.js').InvestigationAnalysisSnapshot}
+   */
+  function rowAnalysis(row) {
+    return buildAnalysisSnapshot(row.checkStates, batchFinishedAt || new Date().toISOString());
+  }
+
+  /** @param {import('../types.js').BatchRow} row */
+  function rowSignal(row) {
+    return scoreInvestigationAnalysis(rowAnalysis(row));
   }
 
   /**
@@ -712,12 +728,14 @@
                     <th scope="col">ASN / Network</th>
                     <th scope="col">RDAP</th>
                     <th scope="col">TLS</th>
+                    <th scope="col">Signal</th>
                     <th scope="col">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {#each batchRows as row (row.ioc.id)}
                     {@const status = computeBatchStatus(row.checkStates)}
+                    {@const signal = rowSignal(row)}
                     <tr>
                       <td class="batch__ioc">
                         <button
@@ -738,6 +756,15 @@
                       <td>{tlsCell(row)}</td>
                       <td>
                         <span
+                           class="batch__status"
+                           class:batch__status--ok={signal.level === 'low'}
+                           class:batch__status--warn={signal.level === 'medium'}
+                           class:batch__status--bad={signal.level === 'high'}
+                           >{signal.label}{signal.score === null ? '' : ` · ${signal.score}`}</span
+                         >
+                       </td>
+                      <td>
+                        <span
                           class="batch__status"
                           class:batch__status--ok={status === 'Complete'}
                           class:batch__status--warn={status === 'Partial'}
@@ -749,13 +776,15 @@
                     {#if detailIds.includes(row.ioc.id)}
                       {@const links = getDeepLinks(row.ioc.typeId, row.ioc.normalized, catalog.tools)}
                       <tr class="batch__detail">
-                        <td colspan="6">
+                        <td colspan="7">
                           {#if row.checkStates.length === 0}
                             <p class="ioc__nolinks">
                               No automated check available for this indicator type — the links below
                               open it in a full tool.
                             </p>
                           {:else}
+                            <SignalScore analysis={rowAnalysis(row)} />
+
                             <ul class="checks" aria-label={`Checks for ${row.ioc.normalized}`}>
                               {#each row.checkStates as check (check.def.id)}
                                 <li class="check">
@@ -815,6 +844,7 @@
                                       >{check.result.message}</p
                                     >
                                   {/if}
+                                   <ProviderRawResponse raw={check.result?.raw} />
                                 </li>
                               {/each}
                             </ul>

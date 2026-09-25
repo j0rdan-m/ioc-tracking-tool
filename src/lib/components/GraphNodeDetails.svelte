@@ -10,6 +10,8 @@
   import { applyPivotCandidates } from '../services/workspace/intake.js';
   import { getDeepLinks } from '../utils/deep-links.js';
   import { formatTimestamp } from '../utils/format-timestamp.js';
+  import ProviderRawResponse from './ProviderRawResponse.svelte';
+  import SignalScore from './SignalScore.svelte';
 
   /** @type {{ node: import('../types.js').WorkspaceNode,
    *           investigation: import('../types.js').WorkspaceInvestigation,
@@ -172,10 +174,12 @@
       <section>
         <h4>Latest analysis</h4>
         <p>Checked {formatTimestamp(node.analysis.checkedAt)} UTC</p>
+        <SignalScore analysis={node.analysis} compact />
         <ul>
-          {#each node.analysis.checks as check (check.toolId)}
-            <li><strong>{check.toolId}</strong> <span>{check.status}</span>
+          {#each node.analysis.checks as check (check.id)}
+            <li><strong>{check.label}</strong> <span>{check.status}</span>
               {#if check.summary}<small>{check.summary}</small>{/if}
+              <ProviderRawResponse raw={check.raw} />
             </li>
           {/each}
         </ul>

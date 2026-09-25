@@ -617,6 +617,9 @@ const notFound = await notFoundAnalyzer.getChecks('domain')[0].run('example.com'
 if (notFound.status !== 'error' || !notFound.message?.includes('404')) {
   throw new Error(`Fast analyze: a 404 must surface as an error mentioning it, got ${notFound.message}.`);
 }
+if (notFound.raw?.status !== 404 || notFound.raw.body !== '{}') {
+  throw new Error(`Fast analyze: an HTTP error must retain its bounded response body, got ${JSON.stringify(notFound.raw)}.`);
+}
 
 // No live check for hashes / usernames (providers now require an API key).
 if (analyzer.getChecks('file').length !== 0 || analyzer.getChecks('username').length !== 0) {
@@ -1388,6 +1391,33 @@ if ('raw' in defaultCheck) {
 if (exportMd.content.includes('is_datacenter') || exportCsv.content.includes('is_datacenter')) {
   throw new Error('Export: raw provider payloads must never leak into Markdown or CSV.');
 }
+const scoredExportEntry = {
+  ...exportEntry,
+  latestAnalysis: {
+    ...exportEntry.latestAnalysis,
+    checks: exportEntry.latestAnalysis.checks.map((check, index) => index === 0
+      ? { ...check, fields: [...check.fields, { label: 'Tor exit node', value: 'Yes' }] }
+      : check),
+  },
+};
+const scoredJson = JSON.parse(exportInvestigation([scoredExportEntry], 'json', exportOptions).content);
+const scoredMd = exportInvestigation([scoredExportEntry], 'markdown', exportOptions).content;
+const scoredCsv = exportInvestigation([scoredExportEntry], 'csv', exportOptions).content;
+if (
+  scoredJson.signalScore?.score !== 30 ||
+  scoredJson.signalScore?.level !== 'medium' ||
+  scoredJson.signalScore?.version !== SIGNAL_SCORE_VERSION ||
+  scoredJson.verdict !== 'suspicious' ||
+  !scoredMd.includes('**Signal:** Medium · 30/100') ||
+  !scoredMd.includes('**Signal rationale:** Tor exit node (+30)') ||
+  !scoredCsv.includes('signal,signal_score') ||
+  !scoredCsv.includes('medium,30')
+) {
+  throw new Error('Export: signal score must be derived, explainable and separate from the analyst verdict.');
+}
+if ('signalScore' in bareInv) {
+  throw new Error('Export: excluding analysis must exclude the derived signal score.');
+}
 if (
   ExportOptionsDefaults.includeAnalysis !== true ||
   ExportOptionsDefaults.includeNotes !== true ||
@@ -2077,7 +2107,7 @@ exportCase = setNodeAnalysis(exportCase, 'ip:192.0.2.46', {
   checkedAt: wsNow,
   checks: [{
     id: 'fake', label: 'Fake check', toolId: 'fake-provider', status: 'ok', summary: 'OK',
-    fields: [{ label: 'Country', value: 'FR' }], message: null,
+    fields: [{ label: 'Country', value: 'FR' }, { label: 'Tor exit node', value: 'Yes' }], message: null,
     raw: createProviderRawResponse({
       url: 'https://provider.test/192.0.2.46', status: 200, contentType: 'application/json', body: '{"country":"FR"}',
     }),
@@ -2088,6 +2118,9 @@ const workspaceJson = exportWorkspaceInvestigation(exportCase, 'json', { now: ws
 const workspaceJsonPayload = JSON.parse(workspaceJson.content);
 if (workspaceJson.generatedAt !== undefined) throw new Error('Workspace export: generatedAt must stay at the document root.');
 if (workspaceJsonPayload.generatedAt !== wsNow || workspaceJsonPayload.investigation.nodes.length !== 2) throw new Error('Workspace export: JSON must preserve the investigation.');
+if (workspaceJsonPayload.investigation.nodes[1].signalScore?.score !== 30) {
+  throw new Error('Workspace export: JSON must include the derived signal score.');
+}
 if ('raw' in workspaceJsonPayload.investigation.nodes[1].analysis.checks[0]) {
   throw new Error('Workspace export: raw provider payloads must be excluded by default.');
 }
@@ -2096,13 +2129,17 @@ if (JSON.parse(workspaceJsonWithRaw.content).investigation.nodes[1].analysis.che
   throw new Error('Workspace export: includeRaw must include the bounded provider payload.');
 }
 const workspaceMarkdown = exportWorkspaceInvestigation(exportCase, 'markdown', { now: wsNow, includeRaw: true });
-if (!workspaceMarkdown.content.includes('`evil[.]example[.]com`') || !workspaceMarkdown.content.includes('Fake provider')) throw new Error('Workspace export: Markdown must include defanged values and provenance.');
+if (!workspaceMarkdown.content.includes('`evil[.]example[.]com`') || !workspaceMarkdown.content.includes('Fake provider') || !workspaceMarkdown.content.includes('Signal: Medium · 30/100') || !workspaceMarkdown.content.includes('Signal rationale: Tor exit node (+30)')) throw new Error('Workspace export: Markdown must include defanged values, provenance and the score rationale.');
 if (/\]\(https?:\/\//i.test(workspaceMarkdown.content)) throw new Error('Workspace export: Markdown must not create active indicator links.');
 const workspaceCsv = exportWorkspaceInvestigation(exportCase, 'csv', { now: wsNow, includeRaw: true });
-if (workspaceCsv.content.includes('"country":"FR"') || workspaceCsv.content.includes('provider.test')) {
-  throw new Error('Workspace export: raw provider payloads must never leak into CSV.');
+if (workspaceCsv.content.includes('"country":"FR"') || workspaceCsv.content.includes('provider.test') || !workspaceCsv.content.includes('signal,signal_score') || !workspaceCsv.content.includes('medium,30')) {
+  throw new Error('Workspace export: CSV must expose the score and never leak raw responses.');
 }
 if (!workspaceCsv.content.includes('"Comma, quote "" and\nline break"')) throw new Error('Workspace export: CSV must escape commas, quotes and line breaks.');
+const workspaceBare = exportWorkspaceInvestigation(exportCase, 'json', { now: wsNow, includeAnalysis: false });
+if ('signalScore' in JSON.parse(workspaceBare.content).investigation.nodes[1]) {
+  throw new Error('Workspace export: excluding analysis must exclude the derived signal score.');
+}
 const importedWorkspace = parseWorkspaceImport(workspaceJson.content);
 if (importedWorkspace.investigation.id !== exportCase.id || importedWorkspace.investigation.relationships.length !== 1 || importedWorkspace.generatedAt !== wsNow) throw new Error('Workspace import: generated JSON must round-trip locally.');
 let importRejected = false;

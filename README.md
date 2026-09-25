@@ -36,6 +36,19 @@ Implementation: `src/lib/services/fast-analyze.js` (providers + response normali
 `src/lib/components/FastAnalyzeModal.svelte` (UI), wired through `DI_TOKENS.fastAnalyzer` in the
 DI container.
 
+## Provider evidence and signal score (V2.1)
+
+Each successful keyless provider lookup can retain a bounded, inert copy of its response locally
+(32 KiB per response, 64 KiB per analysis, with a rolling 1 MiB history budget). The raw viewer
+shows the exact provider URL, HTTP status, content type and UTF-8-safe text prefix; it never renders
+HTML, follows the URL automatically or sends the body anywhere. JSON exports include it only when
+**Raw provider responses** is explicitly enabled; Markdown and CSV never include it.
+
+The local **signal score** is a versioned heuristic derived from normalized provider fields and
+explicitly explains its contributions. It uses `Low` (0–29), `Medium` (30–59) and `High` (60–100),
+or `Not assessed` when no reliable weighted signal is present. It is not a probability, does not
+change the analyst verdict and is recalculated when exporting.
+
 ## Extract IoCs
 
 The **🔍 Extract IoCs** button opens a modal that pulls every indicator out of a pasted text (log,
@@ -133,8 +146,10 @@ through an invisible anchor, and the export never touches the network or the sto
   is exported without writing to the history);
 - **Content options**: analysis results, analyst notes, tags and external investigation links are
   exported by default and can be turned off per export — excluded sections are absent from the
-  file, not empty. *Raw provider responses* (JSON only) is off by default and currently yields
-  `null`, since the app does not retain the raw payloads;
+  file, not empty. *Raw provider responses* is opt-in and JSON-only: the response is retained as
+  bounded, inert text with its URL, HTTP status and content type when the provider exposes it. The
+  heuristic signal score is derived from normalized fields at export time and is never an analyst
+  verdict;
 - **Safety**: the headline IoC is always the defanged form (`176[.]128[.]43[.]70`,
   `hxxps://evil[.]example[.]com/...`) and sits between backticks in Markdown; the links section
   lists tool names only, never an active URL. The verdict, tags and notes are exported exactly as
@@ -143,9 +158,10 @@ through an invisible anchor, and the export never touches the network or the sto
 - **Missing data** never breaks an export: `null` in JSON, empty cells in CSV, *Not available* in
   Markdown; entries saved before provenance existed export fine without it;
 - **Formats**: Markdown follows the report layout (one `## IoC` block per investigation for a
-  selection); JSON keeps native types (`Yes` → `true`, `"87"` → `87`); CSV is one line per IoC —
-  base columns, one `<check>_status` column per provider, then one column per field, RFC 4180
-  quoted, tags joined with `;`;
+  selection); JSON keeps native types (`Yes` → `true`, `"87"` → `87`) and includes the derived
+  `signalScore` object; CSV is one line per IoC — base columns, signal columns, one
+  `<check>_status` column per provider, then one column per field, RFC 4180 quoted, tags joined
+  with `;`; raw provider bodies are never emitted in Markdown or CSV;
 - **Filenames**: `investigation-<slug>-<YYYY-MM-DD>.md|json|csv` for one investigation,
   `investigations-<YYYY-MM-DD>.<ext>` for a selection.
 
@@ -248,8 +264,11 @@ and a local timeline — instead of isolated single-IoC entries.
   pivot limits and selection, CSV escaping, workspace round-trip and malformed
   import rejection. Lifecycle coverage includes deep-copy independence, fresh copy
   identity, colliding-import preservation and the exact-name delete guard. Raw
-  provider responses remain unavailable because the app does not retain them yet;
-  the V1.5 raw option therefore remains `null`.
+  provider responses are retained as bounded inert text and the V1.5 raw option
+  is JSON-only and opt-in. The V2.1 signal score is a
+  local, versioned heuristic (Low 0–29, Medium 30–59, High 60–100) derived from
+  normalized provider fields; it is shown with its contributions and never
+  changes the analyst verdict.
 
 `npm run smoke` exercises creation, deduplication, provenance, evidence merging,
 analyst-only verdicts, verbatim notes, timeline, repository persistence, lifecycle
@@ -287,6 +306,9 @@ src/
         pivot-service.js               # explicit, bounded provider pivot discovery
         import.js                      # local JSON workspace import boundary
     utils/                    # pure helpers (refang/defang, IoC extraction, batch analysis, filtering, colors)
+       provider-response.js    # bounded, inert provider response helpers
+       signal-score.js         # versioned, explainable local heuristic
+       refang.js, extract-iocs.js, batch-analyze.js, history-filter.js
     components/               # Svelte UI components
   App.svelte                  # page layout & state
   main.js                     # entry point: builds the container, mounts the app

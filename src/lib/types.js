@@ -247,8 +247,7 @@
  * @property {boolean} [includeNotes]    Include the analyst notes.
  * @property {boolean} [includeTags]     Include the tags.
  * @property {boolean} [includeLinks]    Include the external investigation links.
- * @property {boolean} [includeRaw]      Include raw provider responses (JSON only; the
- *   application does not retain them yet, so the value stays `null`).
+ * @property {boolean} [includeRaw]      Include bounded raw provider responses (JSON only).
  * @property {import('./types.js').Tool[]} [tools] Catalog used to resolve provider
  *   names and build the investigation links.
  * @property {string | Date} [now] Generation date (injectable for tests).

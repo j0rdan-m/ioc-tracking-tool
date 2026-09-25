@@ -14,6 +14,7 @@ import { formatTimestamp } from '../../utils/format-timestamp.js';
 import { getDeepLinks } from '../../utils/deep-links.js';
 import { sanitizeProviderRawResponse } from '../../utils/provider-response.js';
 import { defangIoc } from '../../utils/refang.js';
+import { scoreInvestigationAnalysis } from '../../utils/signal-score.js';
 
 /**
  * Local aliases keep the file body readable while letting svelte-check
@@ -32,7 +33,7 @@ import { defangIoc } from '../../utils/refang.js';
 
 /**
  * Content options of an export (US V1.5): the most useful sections are on by
- * default; raw provider responses stay off (they are not retained yet).
+ * default; raw provider responses stay off by default and are JSON-only.
  *
  * @type {Readonly<{ includeAnalysis: boolean, includeNotes: boolean,
  *   includeTags: boolean, includeLinks: boolean, includeRaw: boolean }>}
@@ -142,6 +143,8 @@ const IOC_TYPE_LABELS = new Map(
  * @property {{ verdict: InvestigationVerdict, tags?: string[], notes?: string }} analyst
  * @property {ExportModelAnalysis | null} [analysis] Absent when excluded by the
  *   options (AC11), `null` when no analysis is stored (AC12).
+ * @property {import('../../utils/signal-score.js').InvestigationSignalScore | null} [signalScore] Derived
+ *   heuristic score, never an analyst verdict.
  * @property {{ id: InvestigationSource, label: string } | null} provenance
  *   `null` when the origin is unknown (older entries stay exportable).
  * @property {DeepLink[]} [links] Absent when excluded by the options (AC11).
@@ -249,6 +252,7 @@ function buildInvestigation(input, opts) {
     investigation.analysis = input.latestAnalysis
       ? buildAnalysis(input.latestAnalysis, opts, tools)
       : null;
+    investigation.signalScore = scoreInvestigationAnalysis(input.latestAnalysis);
   }
   if (opts.includeLinks) {
     investigation.links =

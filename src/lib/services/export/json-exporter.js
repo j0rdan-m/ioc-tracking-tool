@@ -85,6 +85,9 @@ function jsonInvestigation(investigation) {
         }
       : null;
   }
+  if ('signalScore' in investigation) {
+    payload.signalScore = investigation.signalScore;
+  }
   if (investigation.links !== undefined && investigation.links !== null) {
     payload.links = investigation.links.map((link) => ({ name: link.name, url: link.url }));
   }

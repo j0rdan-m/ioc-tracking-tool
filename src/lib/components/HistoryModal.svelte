@@ -3,6 +3,8 @@
   import { DI_TOKENS } from '../di/tokens.js';
   import { INVESTIGATION_VERDICTS } from '../services/investigation-history.js';
   import ExportPanel from './ExportPanel.svelte';
+  import ProviderRawResponse from './ProviderRawResponse.svelte';
+  import SignalScore from './SignalScore.svelte';
   import { getDeepLinks } from '../utils/deep-links.js';
   import { formatTimestamp } from '../utils/format-timestamp.js';
   import { collectTags, filterInvestigations, normalizeTag } from '../utils/history-filter.js';
@@ -392,6 +394,7 @@
               <p class="hist__note">
                 Latest analysis: {formatTimestamp(selected.latestAnalysis.checkedAt)} UTC
               </p>
+              <SignalScore analysis={selected.latestAnalysis} />
               {#if selected.latestAnalysis.checks.length === 0}
                 <p class="hist__note">
                   Automated analysis: not available for this indicator type — only the deep links
@@ -457,6 +460,7 @@
                           {check.message}
                         </p>
                       {/if}
+                      <ProviderRawResponse raw={check.raw} />
                     </li>
                   {/each}
                 </ul>

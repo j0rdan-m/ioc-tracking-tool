@@ -23,5 +23,22 @@
   and collision-safe JSON import that preserves both records. Smoke coverage and
   README updated.
 
-Hors périmètre V2 : PDF/Word, export PNG/SVG du graphe, backend, comptes, sync
-cloud, SIEM/SOAR, STIX/TAXII, MISP, scoring ou attribution automatiques.
+## V2.1 — Provider evidence & explainable scoring
+
+- [x] **Lot 1 — bounded provider evidence**: keyless Fast Analyze responses now retain
+  inert raw text (32 KiB per response, 64 KiB per analysis, 1 MiB rolling history budget),
+  with UTF-8-safe truncation and localStorage sanitization.
+- [x] **Lot 2 — explicit raw export**: JSON exports include bounded provider payloads only when
+  requested; Markdown and CSV never receive them.
+- [x] **Lot 3 — versioned signal engine**: local deterministic scoring from normalized fields,
+  explainable contributions, Low/Medium/High bands and an explicit `unavailable` state; no
+  automatic verdict or attribution.
+- [x] **Lot 4 — UI integration**: Fast Analyze, batch, History, Workspace overview and node
+  details expose the score and expandable raw responses; score and raw are included in exports
+  with regression coverage.
+
+## V2 scope boundaries
+
+Hors périmètre V2/V2.1 : PDF/Word, export PNG/SVG du graphe, backend, comptes, sync
+cloud, SIEM/SOAR, STIX/TAXII, MISP, attribution automatique. Le scoring heuristique local
+et les réponses brutes bornées sont implémentés sans backend.
