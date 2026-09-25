@@ -14,6 +14,20 @@ import { ToolRepository } from '../src/lib/services/tool-repository.js';
 import { countToolsByCategory, countToolsByIocType, filterTools, nextAutoIocFilter } from '../src/lib/utils/filter-tools.js';
 import { detectIocType } from '../src/lib/utils/detect-ioc-type.js';
 import { FavoritesService } from '../src/lib/services/favorites.js';
+import { OnboardingService } from '../src/lib/services/onboarding.js';
+import {
+  TOUR_STEPS,
+  TOUR_TARGETS,
+  TOUR_VERSION,
+  clampIndex,
+  computeTourLayout,
+  getStep,
+  isFirstStep,
+  isLastStep,
+  nextIndex,
+  prevIndex,
+  stepProgress,
+} from '../src/lib/utils/onboarding-tour.js';
 import { FastAnalyzerService } from '../src/lib/services/fast-analyze.js';
 import { getDeepLinks } from '../src/lib/utils/deep-links.js';
 import { computeGraphLayout, GRAPH_HEIGHT, GRAPH_WIDTH } from '../src/lib/utils/graph-layout.js';
@@ -268,6 +282,154 @@ isolatedFavorites.toggle('virustotal');
 if (!isolatedFavorites.isFavorite('virustotal')) {
   throw new Error('FavoritesService: in-memory fallback failed.');
 }
+
+// --- Onboarding tour (V2.2) ---
+// The tour is pure data + pure geometry: the step list, the navigation and the
+// card placement are all checked here, and every step must point at a
+// `data-tour` attribute that really exists in the frontend.
+if (TOUR_STEPS.length < 5) {
+  throw new Error(`Onboarding: expected a multi-step tour, got ${TOUR_STEPS.length} steps.`);
+}
+const stepIds = new Set();
+for (const step of TOUR_STEPS) {
+  for (const field of ['id', 'target', 'eyebrow', 'title', 'body']) {
+    if (typeof step[field] !== 'string' || step[field] === '') {
+      throw new Error(`Onboarding: step "${step.id}" has an empty "${field}".`);
+    }
+  }
+  if (stepIds.has(step.id)) {
+    throw new Error(`Onboarding: duplicate step id "${step.id}".`);
+  }
+  stepIds.add(step.id);
+  // Factual output only: the tour must never promise or assert a verdict. The
+  // check targets verdicts stated as fact, not the sentence explaining that the
+  // app does NOT deliver one.
+  if (/\b(is|are)\s+(safe|malicious)\b|\bverdict:\s*(safe|malicious)\b/gi.test(step.body)) {
+    throw new Error(`Onboarding: step "${step.id}" must not state a verdict as fact.`);
+  }
+}
+
+// Navigation stays inside the step list and never wraps.
+if (
+  clampIndex(-3, TOUR_STEPS.length) !== 0 ||
+  clampIndex(99, TOUR_STEPS.length) !== TOUR_STEPS.length - 1 ||
+  clampIndex(0, 0) !== 0
+) {
+  throw new Error('Onboarding: clampIndex must stay inside the step list.');
+}
+if (prevIndex(0) !== 0 || nextIndex(TOUR_STEPS.length - 1, TOUR_STEPS.length) !== TOUR_STEPS.length - 1) {
+  throw new Error('Onboarding: navigation must not run past either end.');
+}
+if (nextIndex(0, TOUR_STEPS.length) !== 1 || prevIndex(1) !== 0) {
+  throw new Error('Onboarding: next/previous did not move one step.');
+}
+if (!isFirstStep(0) || isFirstStep(1) || !isLastStep(TOUR_STEPS.length - 1) || isLastStep(0)) {
+  throw new Error('Onboarding: first/last step detection failed.');
+}
+const firstProgress = stepProgress(0);
+const lastProgress = stepProgress(TOUR_STEPS.length - 1);
+if (
+  firstProgress.current !== 1 ||
+  firstProgress.total !== TOUR_STEPS.length ||
+  firstProgress.percent !== Math.round(100 / TOUR_STEPS.length) ||
+  lastProgress.current !== TOUR_STEPS.length ||
+  lastProgress.percent !== 100
+) {
+  throw new Error(
+    `Onboarding: unexpected progress, got ${JSON.stringify([firstProgress, lastProgress])}.`,
+  );
+}
+if (getStep(0)?.id !== TOUR_STEPS[0].id || getStep(999)?.id !== TOUR_STEPS[TOUR_STEPS.length - 1].id) {
+  throw new Error('Onboarding: getStep must clamp to the existing steps.');
+}
+if (getStep(0, []) !== null) {
+  throw new Error('Onboarding: getStep must return null for an empty step list.');
+}
+// Placement (default offset 12, margin 16): below by default, above when there
+// is no room below, centered when the target cannot be measured, and always
+// inside the viewport.
+const tourViewport = { width: 1000, height: 800 };
+const tourCard = { width: 400, height: 200 };
+const below = computeTourLayout({ top: 100, left: 100, width: 120, height: 40 }, tourViewport, tourCard);
+if (below.spotlight.visible !== true || below.card.placement !== 'below' || below.card.top !== 152) {
+  throw new Error(`Onboarding: expected a "below" placement, got ${JSON.stringify(below.card)}.`);
+}
+const above = computeTourLayout({ top: 600, left: 100, width: 120, height: 40 }, tourViewport, tourCard);
+if (above.card.placement !== 'above' || above.card.top !== 388) {
+  throw new Error(`Onboarding: expected an "above" placement, got ${JSON.stringify(above.card)}.`);
+}
+const centered = computeTourLayout(null, tourViewport, tourCard);
+if (centered.spotlight.visible !== false || centered.card.placement !== 'center') {
+  throw new Error('Onboarding: a missing target must fall back to a centered card.');
+}
+const offscreen = computeTourLayout(
+  { top: 700, left: 980, width: 120, height: 40 },
+  tourViewport,
+  tourCard,
+  { offset: 1000, margin: 0 },
+);
+if (offscreen.card.left > tourViewport.width - tourCard.width || offscreen.card.top > tourViewport.height - tourCard.height) {
+  throw new Error('Onboarding: the card must stay inside the viewport.');
+}
+
+// Every tour step must point at a target the frontend really renders.
+const appSource = readFileSync(new URL('../src/App.svelte', import.meta.url), 'utf8');
+const searchBarSource = readFileSync(
+  new URL('../src/lib/components/SearchBar.svelte', import.meta.url),
+  'utf8',
+);
+for (const target of TOUR_TARGETS) {
+  const found =
+    appSource.includes(`data-tour="${target}"`) || searchBarSource.includes(`data-tour="${target}"`);
+  if (!found) {
+    throw new Error(`Onboarding: step target "${target}" has no data-tour attribute in the frontend.`);
+  }
+}
+if (!appSource.includes('<OnboardingTour bind:open={tourOpen} />')) {
+  throw new Error('Onboarding: the tour component must be mounted in App.svelte.');
+}
+
+// The first-visit flag: opens on a clean browser, stays quiet afterwards, and a
+// new step-list version is offered again.
+const onboardingStore = new Map();
+const onboardingStorage = {
+  getItem: (key) => (onboardingStore.has(key) ? onboardingStore.get(key) : null),
+  setItem: (key, value) => onboardingStore.set(key, String(value)),
+};
+const onboardingService = new OnboardingService(onboardingStorage);
+if (!onboardingService.shouldAutoOpen(TOUR_VERSION)) {
+  throw new Error('OnboardingService: the tour must open on a first visit.');
+}
+if (onboardingService.hasSeenTour()) {
+  throw new Error('OnboardingService: an empty storage means the tour was not seen.');
+}
+onboardingService.markSeen(TOUR_VERSION);
+if (onboardingService.shouldAutoOpen(TOUR_VERSION) || !onboardingService.hasSeenTour()) {
+  throw new Error('OnboardingService: a completed tour must not reopen itself.');
+}
+if (!onboardingService.shouldAutoOpen(TOUR_VERSION + 1)) {
+  throw new Error('OnboardingService: a newer step list must be offered again.');
+}
+const persistedOnboarding = new OnboardingService(onboardingStorage);
+if (persistedOnboarding.shouldAutoOpen(TOUR_VERSION)) {
+  throw new Error('OnboardingService: the flag must persist through the storage.');
+}
+onboardingStore.set('ioc-toolkit:onboarding', 'not-json');
+if (!onboardingService.shouldAutoOpen(TOUR_VERSION)) {
+  throw new Error('OnboardingService: a corrupted flag must be treated as "not seen".');
+}
+const isolatedOnboarding = new OnboardingService();
+isolatedOnboarding.markSeen(TOUR_VERSION);
+if (isolatedOnboarding.shouldAutoOpen(TOUR_VERSION)) {
+  throw new Error('OnboardingService: in-memory fallback failed.');
+}
+isolatedOnboarding.reset();
+if (!isolatedOnboarding.shouldAutoOpen(TOUR_VERSION)) {
+  throw new Error('OnboardingService: reset must bring the tour back.');
+}
+
+
+
 
 // --- Health catalog (optional snapshot, regenerated by `npm run health`) ---
 const healthPath = new URL('../src/data/health.json', import.meta.url);

@@ -200,6 +200,21 @@
   --z-header: 20;
   --z-modal: 50;
   --z-modal-content: 1;
+  /* Onboarding tour: above every dialog, its card one layer above the veil. */
+  --z-tour: 70;
+  --z-tour-card: 1;
+  --tour-veil: color-mix(in srgb, var(--palette-shadow) 72%, transparent);
+  --tour-veil-spread: 9999px;
+  --tour-spotlight-gap: 4px;
+  --tour-spotlight-radius: var(--radius-md);
+  --tour-card-width: 25rem;
+  --tour-progress-height: 3px;
+  /* Painted bottom-up: the huge spread veils the page everywhere except the
+     highlighted control, then the accent ring hugs that control. */
+  --tour-target-halo:
+    0 0 0 var(--tour-veil-spread) var(--tour-veil),
+    0 0 0 calc(var(--tour-spotlight-gap) * 2) var(--color-accent),
+    0 0 0 var(--tour-spotlight-gap) var(--color-accent);
 
   --blur-backdrop: blur(3px);
   --blur-header: blur(14px);

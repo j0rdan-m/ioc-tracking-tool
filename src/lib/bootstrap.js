@@ -7,6 +7,7 @@ import { DownloadService } from './services/download.js';
 import { FavoritesService } from './services/favorites.js';
 import { FastAnalyzerService } from './services/fast-analyze.js';
 import { InvestigationHistoryService } from './services/investigation-history.js';
+import { OnboardingService } from './services/onboarding.js';
 import { InvestigationRepository } from './services/workspace/investigation-repository.js';
 import { WorkspacePivotService } from './services/workspace/pivot-service.js';
 import { parseWorkspaceImport, resolveWorkspaceImportCollision } from './services/workspace/import.js';
@@ -71,6 +72,10 @@ export function createAppContainer() {
     parse: parseWorkspaceImport,
     resolveCollision: resolveWorkspaceImportCollision,
   }));
+
+  // First-visit interactive tour: a single localStorage flag, no network. The
+  // step list itself is pure data in utils/onboarding-tour.js.
+  container.register(DI_TOKENS.onboarding, () => new OnboardingService());
 
   return container;
 }

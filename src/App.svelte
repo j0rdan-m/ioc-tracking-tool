@@ -5,14 +5,16 @@
   import HistoryModal from './lib/components/HistoryModal.svelte';
   import IocExtractorModal from './lib/components/IocExtractorModal.svelte';
   import IocTypeFilter from './lib/components/IocTypeFilter.svelte';
+  import OnboardingTour from './lib/components/OnboardingTour.svelte';
   import WorkspaceModal from './lib/components/WorkspaceModal.svelte';
   import SearchBar from './lib/components/SearchBar.svelte';
   import ToolGrid from './lib/components/ToolGrid.svelte';
   import { createAppContainer } from './lib/bootstrap.js';
   import { inject, provideContainer } from './lib/di/provide.js';
   import { DI_TOKENS } from './lib/di/tokens.js';
-  import { untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { detectIocType } from './lib/utils/detect-ioc-type.js';
+  import { TOUR_VERSION } from './lib/utils/onboarding-tour.js';
   import {
     countToolsByCategory,
     countToolsByIocType,
@@ -34,6 +36,7 @@
   const toolRepository = inject(DI_TOKENS.toolRepository);
   const favorites = inject(DI_TOKENS.favorites);
   const healthCatalog = inject(DI_TOKENS.healthCatalog);
+  const onboarding = inject(DI_TOKENS.onboarding);
 
   let query = $state('');
   let selectedCategoryId = $state('all');
@@ -48,7 +51,16 @@
   let historyOpen = $state(false);
   let workspaceOpen = $state(false);
   let emailHeadersOpen = $state(false);
+  let tourOpen = $state(false);
   let catalogPromise = $state(toolRepository.getCatalog());
+
+  // First visit only: the interactive tour opens by itself and records that it
+  // was completed. The "Guide" toolbar button replays it at any time.
+  onMount(() => {
+    if (onboarding.shouldAutoOpen(TOUR_VERSION)) {
+      tourOpen = true;
+    }
+  });
 
   // IoC shape detected in the current query (null when it is not an observable).
   let detectedIocTypeId = $derived(detectIocType(query));
@@ -174,6 +186,7 @@
         <button
           type="button"
           class="fast-analyze"
+          data-tour="fast-analyze"
           onclick={() => openFastAnalyze(query)}
           title="Query free no-account APIs for one IoC"
         >
@@ -182,6 +195,7 @@
         <button
           type="button"
           class="extract-iocs"
+          data-tour="extract-iocs"
           onclick={() => (extractorOpen = true)}
           title="Pull every IoC out of a pasted text"
         >
@@ -190,6 +204,7 @@
         <button
           type="button"
           class="workspace-open"
+          data-tour="workspace"
           onclick={() => (workspaceOpen = true)}
           title="Group indicators, notes and relationships in a local investigation"
         >
@@ -198,6 +213,7 @@
         <button
           type="button"
           class="history-open"
+          data-tour="history"
           onclick={() => (historyOpen = true)}
           title="Your locally stored investigations (verdicts, tags, notes)"
         >
@@ -206,10 +222,19 @@
         <button
           type="button"
           class="email-headers-open"
+          data-tour="email-headers"
           onclick={() => (emailHeadersOpen = true)}
           title="Parse pasted email headers: authentication, mail path, extracted IoCs"
         >
           📧 Email headers
+        </button>
+        <button
+          type="button"
+          class="guide-open"
+          onclick={() => (tourOpen = true)}
+          title="Replay the interactive guide"
+        >
+          ❔ Guide
         </button>
         <CategoryFilter
           categories={catalog.categories}
@@ -225,6 +250,7 @@
           type="button"
           class="favorites-toggle"
           class:favorites-toggle--active={favoritesOnly}
+          data-tour="favorites"
           aria-pressed={favoritesOnly}
           onclick={() => (favoritesOnly = !favoritesOnly)}
         >
@@ -271,6 +297,10 @@
       <button type="button" class="retry" onclick={retryLoadingCatalog}>Retry</button>
     {/await}
   </main>
+
+  <!-- Mounted outside the catalog await: the tour must also work when the
+       catalog fails to load (the card then falls back to a centered layout). -->
+  <OnboardingTour bind:open={tourOpen} />
 
   <footer class="footer">
     <p>
@@ -387,7 +417,8 @@
   .extract-iocs,
   .workspace-open,
   .history-open,
-  .email-headers-open {
+  .email-headers-open,
+  .guide-open {
     padding: var(--space-2) var(--space-4);
     font: inherit;
     font-size: var(--font-size-sm);
@@ -403,7 +434,8 @@
   .extract-iocs:hover,
   .workspace-open:hover,
   .history-open:hover,
-  .email-headers-open:hover {
+  .email-headers-open:hover,
+  .guide-open:hover {
     color: var(--color-text);
     border-color: var(--color-accent);
   }

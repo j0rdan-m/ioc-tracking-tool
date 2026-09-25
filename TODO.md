@@ -37,6 +37,16 @@
   details expose the score and expandable raw responses; score and raw are included in exports
   with regression coverage.
 
+## V2.2 — Interactive onboarding
+
+- [x] **Lot 1 — spotlight tour**: first-visit guided tour highlighting the real toolbar controls
+  (search, Fast analyze, Extract IoCs, Workspace, History, Email headers, Favorites), replayable
+  with the "Guide" button; keyboard navigation and a centered fallback when a target cannot be
+  measured.
+- [x] **Lot 2 — pure model & persistence**: `utils/onboarding-tour.js` (steps, navigation, card
+  placement geometry) + `services/onboarding.js` (versioned localStorage flag) wired through
+  `DI_TOKENS.onboarding`, smoke coverage including the `data-tour` target check, README updated.
+
 ## V2 scope boundaries
 
 Hors périmètre V2/V2.1 : PDF/Word, export PNG/SVG du graphe, backend, comptes, sync

@@ -3,7 +3,7 @@
   let { value = $bindable('') } = $props();
 </script>
 
-<div class="search">
+<div class="search" data-tour="search">
   <svg
     class="search__icon"
     viewBox="0 0 24 24"
