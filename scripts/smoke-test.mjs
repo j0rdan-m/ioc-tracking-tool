@@ -38,6 +38,11 @@ import {
 } from '../src/lib/utils/provider-response.js';
 import { buildAnalysisSnapshot } from '../src/lib/utils/history-filter.js';
 import {
+  SIGNAL_SCORE_VERSION,
+  scoreInvestigationAnalysis,
+  summarizeInvestigationSignals,
+} from '../src/lib/utils/signal-score.js';
+import {
   ExportOptionsDefaults,
   buildExportFilename,
   buildExportModel,
@@ -513,6 +518,68 @@ if (
   JSON.stringify(budgetEntries) !== budgetBefore
 ) {
   throw new Error('Provider raw: the rolling history budget must drop oldest bodies without mutation.');
+}
+
+// V2.1 signal scoring: deterministic, explainable and never a verdict.
+const scoreSnapshot = (/** @type {string} */ checkedAt, /** @type {{ label: string, value: string }[]} */ fields) => ({
+  checkedAt,
+  checks: [{ id: 'signals', label: 'Signals', toolId: 'fake', status: 'ok', ms: 1, summary: null, fields, message: null }],
+});
+const unavailableScore = scoreInvestigationAnalysis(scoreSnapshot('2026-09-25T12:00:00.000Z', [
+  { label: 'Company', value: 'Example ISP' },
+]));
+if (unavailableScore.assessed || unavailableScore.score !== null || unavailableScore.level !== 'unavailable') {
+  throw new Error('Signal score: missing evidence must remain not assessed, never zero.');
+}
+const lowScore = scoreInvestigationAnalysis(scoreSnapshot('2026-09-25T12:00:00.000Z', [
+  { label: 'Crawler / bot', value: 'Yes' },
+  { label: 'Bogon / reserved range', value: 'Yes' },
+]));
+if (lowScore.score !== 10 || lowScore.level !== 'low' || lowScore.contributions.length !== 2) {
+  throw new Error('Signal score: Low must cover an assessed score from 0 to 29.');
+}
+const mediumScore = scoreInvestigationAnalysis(scoreSnapshot('2026-09-25T12:00:00.000Z', [
+  { label: 'Tor exit node', value: 'Yes' },
+]));
+if (mediumScore.score !== 30 || mediumScore.level !== 'medium') {
+  throw new Error('Signal score: Medium must start at 30.');
+}
+const cappedScore = scoreInvestigationAnalysis(scoreSnapshot('2026-09-25T12:00:00.000Z', [
+  { label: 'Reported for abuse', value: 'Yes' },
+  { label: 'Tor exit node', value: 'Yes' },
+  { label: 'Proxy exit node', value: 'Yes' },
+  { label: 'VPN exit node', value: 'Yes' },
+  { label: 'Datacenter / hosting range', value: 'Yes' },
+  { label: 'Crawler / bot', value: 'Yes' },
+  { label: 'Bogon / reserved range', value: 'Yes' },
+]));
+if (cappedScore.score !== 100 || cappedScore.level !== 'high' || cappedScore.version !== SIGNAL_SCORE_VERSION) {
+  throw new Error('Signal score: High must start at 60 and scores must cap at 100.');
+}
+const negativeFlag = scoreInvestigationAnalysis(scoreSnapshot('2026-09-25T12:00:00.000Z', [
+  { label: 'Tor exit node', value: 'No' },
+]));
+if (negativeFlag.assessed || negativeFlag.score !== null) {
+  throw new Error('Signal score: a false flag must never add evidence.');
+}
+const freshDomain = scoreInvestigationAnalysis(scoreSnapshot('2026-09-25T12:00:00.000Z', [
+  { label: 'Created', value: '2026-09-15' },
+]));
+if (freshDomain.score !== 35 || freshDomain.contributions[0]?.id !== 'domain-age') {
+  throw new Error('Signal score: domains younger than 30 days must contribute 35 points.');
+}
+const oldDomain = scoreInvestigationAnalysis(scoreSnapshot('2026-09-25T12:00:00.000Z', [
+  { label: 'Created', value: '2020-01-01' },
+]));
+if (oldDomain.score !== 0 || oldDomain.level !== 'low' || !oldDomain.assessed) {
+  throw new Error('Signal score: a reliable old-domain observation must be assessed as Low.');
+}
+const signalWorkspace = createInvestigation({ name: 'Signal workspace' }, '2026-09-25T12:00:00.000Z');
+let signalNode = addNode(signalWorkspace, { value: '192.0.2.60', seed: true }, '2026-09-25T12:00:00.000Z');
+signalNode = { ...signalNode, analysis: scoreSnapshot('2026-09-25T12:00:00.000Z', [{ label: 'Tor exit node', value: 'Yes' }]) };
+const signalSummary = summarizeInvestigationSignals({ ...signalWorkspace, nodes: [signalNode] });
+if (signalSummary.assessed !== 1 || signalSummary.highest?.score.score !== 30 || signalSummary.levels.medium !== 1) {
+  throw new Error('Signal score: workspace summary must expose the highest node score without a verdict.');
 }
 
 // URL checks read the hostname out of the URL (even without a scheme).

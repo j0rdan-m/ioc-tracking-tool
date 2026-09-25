@@ -225,6 +225,8 @@ export class FastAnalyzerService {
       ['is_bogon', 'Bogon / reserved range', 'warn'],
       ['is_datacenter', 'Datacenter / hosting range', 'warn'],
       ['is_crawler', 'Crawler / bot', 'warn'],
+      ['is_proxy', 'Proxy exit node', 'warn'],
+      ['is_vpn', 'VPN exit node', 'warn'],
       ['is_tor', 'Tor exit node', 'bad'],
       ['is_abuser', 'Reported for abuse', 'bad'],
     ]);
