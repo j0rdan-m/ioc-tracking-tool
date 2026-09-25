@@ -18,6 +18,10 @@
 - [x] **Lot 4 — Validation** : couverture smoke de l'intake, des pivots et de
   l'export/import Workspace, `npm run smoke` + `check` + `theme` + `build`,
   README à jour.
+- [x] **Lot 5 — safe investigation lifecycle** : deep-copy duplication with a new
+  ID and open status, permanent deletion guarded by the exact investigation name,
+  and collision-safe JSON import that preserves both records. Smoke coverage and
+  README updated.
 
 Hors périmètre V2 : PDF/Word, export PNG/SVG du graphe, backend, comptes, sync
 cloud, SIEM/SOAR, STIX/TAXII, MISP, scoring ou attribution automatiques.

@@ -294,6 +294,44 @@ export function createInvestigation(input, now = new Date().toISOString()) {
 }
 
 /**
+ * Creates an independent working copy of an investigation. The graph and all
+ * analyst data are deeply copied, while identity, lifecycle dates and status
+ * start fresh. Existing timeline entries are retained as provenance and a new
+ * creation event records the copy operation.
+ *
+ * @param {WorkspaceInvestigation} investigation
+ * @param {{ name?: string, now?: string }} [options]
+ * @returns {WorkspaceInvestigation}
+ */
+export function duplicateInvestigation(investigation, options = {}) {
+  assertInvestigation(investigation);
+  const now = options.now ?? new Date().toISOString();
+  const name = options.name === undefined
+    ? `${investigation.name} (Copy)`
+    : String(options.name).trim();
+  if (name === '') {
+    throw new TypeError('Workspace: a duplicated investigation needs a non-empty name.');
+  }
+  const copy = structuredClone(investigation);
+  return recordTimelineEvent(
+    {
+      ...copy,
+      id: generateId(),
+      name,
+      status: 'open',
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      type: 'investigation_created',
+      label: `Investigation "${name}" created as a copy of "${investigation.name}"`,
+    },
+    null,
+    now,
+  );
+}
+
+/**
  * Adds an indicator / artifact (V2 AC02). The value is normalized and the node
  * deduplicated on `typeId:normalized` (V2 AC03): adding `evil[.]example.com`
  * and `evil.example.com` yields ONE node, keeping its verdict, notes and

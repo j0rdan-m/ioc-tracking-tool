@@ -238,15 +238,22 @@ and a local timeline — instead of isolated single-IoC entries.
   preserve their provenance without changing the global history. Workspace JSON
   export includes nodes, typed relationships, evidence and timeline; a local JSON
   import restores the generated document without a network request;
+- **Lot 5 — safe lifecycle (implemented)**: investigation cards can create an
+  independent open copy with a new ID while preserving a deep copy of the graph,
+  evidence, analysis snapshots and analyst data. Permanent deletion requires the
+  exact investigation name to be typed. A JSON import whose ID already exists is
+  saved as an **Imported copy**, never as a silent overwrite;
 - **Validation (implemented)**: `npm run smoke`, `npm run check`, `npm run theme`
   and `npm run build` all pass. The smoke suite covers intake deduplication,
   pivot limits and selection, CSV escaping, workspace round-trip and malformed
-  import rejection. Raw provider responses remain unavailable because the app
-  does not retain them yet; the V1.5 raw option therefore remains `null`.
+  import rejection. Lifecycle coverage includes deep-copy independence, fresh copy
+  identity, colliding-import preservation and the exact-name delete guard. Raw
+  provider responses remain unavailable because the app does not retain them yet;
+  the V1.5 raw option therefore remains `null`.
 
 `npm run smoke` exercises creation, deduplication, provenance, evidence merging,
-analyst-only verdicts, verbatim notes, timeline, repository persistence and the
-storage sanitizer.
+analyst-only verdicts, verbatim notes, timeline, repository persistence, lifecycle
+operations and the storage sanitizer.
 
 ## Project structure
 

@@ -9,7 +9,7 @@ import { FastAnalyzerService } from './services/fast-analyze.js';
 import { InvestigationHistoryService } from './services/investigation-history.js';
 import { InvestigationRepository } from './services/workspace/investigation-repository.js';
 import { WorkspacePivotService } from './services/workspace/pivot-service.js';
-import { parseWorkspaceImport } from './services/workspace/import.js';
+import { parseWorkspaceImport, resolveWorkspaceImportCollision } from './services/workspace/import.js';
 import { StaticToolDataSource } from './services/static-tool-data-source.js';
 import { ToolRepository } from './services/tool-repository.js';
 
@@ -67,7 +67,10 @@ export function createAppContainer() {
     (container) => new WorkspacePivotService(container.resolve(DI_TOKENS.fastAnalyzer)),
   );
 
-  container.register(DI_TOKENS.investigationImport, () => ({ parse: parseWorkspaceImport }));
+  container.register(DI_TOKENS.investigationImport, () => ({
+    parse: parseWorkspaceImport,
+    resolveCollision: resolveWorkspaceImportCollision,
+  }));
 
   return container;
 }

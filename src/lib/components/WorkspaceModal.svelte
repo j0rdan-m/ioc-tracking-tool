@@ -1,7 +1,7 @@
 <script>
   import { inject } from '../di/provide.js';
   import { DI_TOKENS } from '../di/tokens.js';
-  import { createInvestigation } from '../services/workspace/investigation-model.js';
+  import { createInvestigation, duplicateInvestigation } from '../services/workspace/investigation-model.js';
   import InvestigationList from './InvestigationList.svelte';
   import InvestigationWorkspace from './InvestigationWorkspace.svelte';
 
@@ -17,6 +17,7 @@
 
   /** @type {import('../services/workspace/investigation-repository.js').InvestigationRepository} */
   const repository = inject(DI_TOKENS.investigationWorkspace);
+  /** @type {{ parse: (text: string) => { investigation: import('../types.js').WorkspaceInvestigation, generatedAt: string | null }, resolveCollision: (value: unknown, existingIds: Iterable<string>) => import('../types.js').WorkspaceInvestigation }} */
   const importer = inject(DI_TOKENS.investigationImport);
   let importInput = $state(/** @type {HTMLInputElement | undefined} */ (undefined));
 
@@ -25,10 +26,19 @@
     if (!file) return;
     try {
       const parsed = importer.parse(await file.text());
-      const saved = await repository.save(parsed.investigation);
-      investigations = await repository.list();
+      const existing = await repository.get(parsed.investigation.id);
+      const imported = importer.resolveCollision(
+        parsed.investigation,
+        existing === null ? [] : [existing.id],
+      );
+      const saved = await repository.save(imported);
+      await refresh();
       selectedId = saved.id;
-      flash(`Imported ${saved.name} locally ✓`);
+      flash(
+        existing === null
+          ? `Imported ${saved.name} locally ✓`
+          : `Imported ${saved.name} as a new local copy ✓`,
+      );
     } catch (cause) {
       flash(cause instanceof Error ? cause.message : 'Could not import the investigation.');
     } finally {
@@ -76,6 +86,37 @@
     const investigation = await repository.save(createInvestigation(input));
     selectedId = investigation.id;
     flash('Investigation created and stored locally ✓');
+  }
+
+  /**
+   * @param {string} id
+   */
+  async function duplicate(id) {
+    const source = await repository.get(id);
+    if (!source) {
+      throw new Error('The investigation to duplicate no longer exists.');
+    }
+    const copy = await repository.save(duplicateInvestigation(source));
+    await refresh();
+    selectedId = copy.id;
+    flash(`Duplicated ${source.name} locally ✓`);
+  }
+
+  /**
+   * @param {string} id
+   */
+  async function remove(id) {
+    const source = await repository.get(id);
+    if (!source) {
+      throw new Error('The investigation to delete no longer exists.');
+    }
+    const removed = await repository.remove(id);
+    if (!removed) {
+      throw new Error('The investigation could not be deleted.');
+    }
+    if (selectedId === id) selectedId = null;
+    await refresh();
+    flash(`Deleted ${source.name} from this browser ✓`);
   }
 
   /**
@@ -174,6 +215,8 @@
           {loading}
           onOpen={(id) => (selectedId = id)}
           onCreate={create}
+          onDuplicate={duplicate}
+          onDelete={remove}
         />
       {/if}
     </div>

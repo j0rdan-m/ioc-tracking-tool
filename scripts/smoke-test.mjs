@@ -50,6 +50,7 @@ import {
   addRelationship,
   createInvestigation,
   detectNodeType,
+  duplicateInvestigation,
   nodeIdOf,
   recordTimelineEvent,
   removeNode,
@@ -74,7 +75,7 @@ import { InvestigationHistoryService } from '../src/lib/services/investigation-h
 import { addIndicatorsToInvestigation, applyPivotCandidates } from '../src/lib/services/workspace/intake.js';
 import { WorkspacePivotService, PIVOT_LIMITS } from '../src/lib/services/workspace/pivot-service.js';
 import { exportWorkspaceInvestigation } from '../src/lib/services/export/workspace-exporter.js';
-import { parseWorkspaceImport } from '../src/lib/services/workspace/import.js';
+import { parseWorkspaceImport, resolveWorkspaceImportCollision } from '../src/lib/services/workspace/import.js';
 
 const catalogPath = new URL('../src/data/tools.json', import.meta.url);
 const catalog = JSON.parse(readFileSync(catalogPath, 'utf8'));
@@ -1926,6 +1927,110 @@ if (importedWorkspace.investigation.id !== exportCase.id || importedWorkspace.in
 let importRejected = false;
 try { parseWorkspaceImport('{not-json'); } catch { importRejected = true; }
 if (!importRejected) throw new Error('Workspace import: malformed JSON must be rejected.');
+
+// Lot 5: a duplicate is a new identity with no mutable aliases to the source.
+let lifecycleSource = createInvestigation(
+  { name: 'Lifecycle source', description: 'Context', tags: ['Phishing'] },
+  wsNow,
+);
+lifecycleSource = addNode(lifecycleSource, { value: 'duplicate.example.com', seed: true }, wsNow);
+lifecycleSource = addNode(lifecycleSource, { value: '192.0.2.47' }, wsNow);
+lifecycleSource = addRelationship(lifecycleSource, {
+  sourceId: 'domain:duplicate.example.com',
+  targetId: 'ip:192.0.2.47',
+  type: 'resolves_to',
+  sourceType: 'provider',
+  sourceLabel: 'Lifecycle provider',
+  provider: 'fake-provider',
+  observedAt: wsNow,
+}, wsNow);
+lifecycleSource = setStatus(lifecycleSource, 'closed', wsNow);
+lifecycleSource = setNodeVerdict(lifecycleSource, 'domain:duplicate.example.com', 'suspicious', wsNow);
+lifecycleSource = setNodeNotes(lifecycleSource, 'domain:duplicate.example.com', 'Original node note', wsNow);
+lifecycleSource = setNodeTags(lifecycleSource, 'domain:duplicate.example.com', ['c2'], wsNow);
+lifecycleSource = setNodePosition(lifecycleSource, 'domain:duplicate.example.com', { x: 111, y: 222 });
+lifecycleSource = setNodeAnalysis(lifecycleSource, 'ip:192.0.2.47', {
+  checkedAt: wsNow,
+  checks: [{ id: 'duplicate-check', label: 'Duplicate check', toolId: null, status: 'ok', summary: null, fields: [{ label: 'ASN', value: 'AS64500' }], message: null }],
+}, wsNow);
+lifecycleSource = setInvestigationNotes(lifecycleSource, 'Original investigation note', wsNow);
+const lifecycleSnapshot = JSON.stringify(lifecycleSource);
+const duplicateAt = '2026-09-25T10:00:00.000Z';
+const lifecycleCopy = duplicateInvestigation(lifecycleSource, { now: duplicateAt });
+if (
+  lifecycleCopy.id === lifecycleSource.id ||
+  lifecycleCopy.name !== 'Lifecycle source (Copy)' ||
+  lifecycleCopy.status !== 'open' ||
+  lifecycleCopy.createdAt !== duplicateAt ||
+  lifecycleCopy.updatedAt !== duplicateAt ||
+  lifecycleCopy.timeline.length !== lifecycleSource.timeline.length + 1 ||
+  lifecycleCopy.timeline.at(-1)?.type !== 'investigation_created'
+) {
+  throw new Error('Workspace duplicate: identity, lifecycle state and creation event must be fresh.');
+}
+if (
+  lifecycleCopy.nodes[0] === lifecycleSource.nodes[0] ||
+  lifecycleCopy.nodes[1].analysis?.checks[0] === lifecycleSource.nodes[1].analysis?.checks[0] ||
+  lifecycleCopy.relationships[0].evidence[0] === lifecycleSource.relationships[0].evidence[0]
+) {
+  throw new Error('Workspace duplicate: nested graph and analysis data must be deeply independent.');
+}
+const copiedAnalysis = /** @type {NonNullable<import('../src/lib/types.js').WorkspaceNode['analysis']>} */ (lifecycleCopy.nodes[1].analysis);
+copiedAnalysis.checks[0].fields[0].value = 'AS65535';
+lifecycleCopy.relationships[0].evidence[0].provider = 'changed';
+lifecycleCopy.tags.push('changed');
+lifecycleCopy.nodes[0].notes = 'Changed copy note';
+if (JSON.stringify(lifecycleSource) !== lifecycleSnapshot) {
+  throw new Error('Workspace duplicate: mutating the copy must not mutate its source.');
+}
+if (
+  lifecycleCopy.nodes[0].verdict !== 'suspicious' ||
+  lifecycleCopy.nodes[0].position?.x !== 111 ||
+  lifecycleCopy.relationships[0].evidence[0].sourceLabel !== 'Lifecycle provider' ||
+  lifecycleCopy.notes !== 'Original investigation note'
+) {
+  throw new Error('Workspace duplicate: analyst and provenance data must be preserved.');
+}
+let emptyDuplicateName = false;
+try { duplicateInvestigation(lifecycleSource, { name: '   ' }); } catch { emptyDuplicateName = true; }
+if (!emptyDuplicateName) throw new Error('Workspace duplicate: an empty copy name must be rejected.');
+
+// A colliding import is copied instead of replacing the existing record.
+const importedAt = '2026-09-25T11:00:00.000Z';
+const collisionCopy = resolveWorkspaceImportCollision(
+  lifecycleSource,
+  new Set([lifecycleSource.id]),
+  { now: importedAt },
+);
+if (
+  collisionCopy.id === lifecycleSource.id ||
+  collisionCopy.name !== 'Lifecycle source (Imported copy)' ||
+  collisionCopy.status !== 'open' ||
+  collisionCopy.nodes.length !== lifecycleSource.nodes.length
+) {
+  throw new Error('Workspace import: an id collision must create an independent copy.');
+}
+if (resolveWorkspaceImportCollision(lifecycleSource, [], { now: importedAt }).id !== lifecycleSource.id) {
+  throw new Error('Workspace import: a non-colliding investigation must keep its id.');
+}
+const lifecycleRepo = new InvestigationRepository(createMemoryWorkspaceAdapter([lifecycleSource]));
+await lifecycleRepo.save(collisionCopy);
+const lifecycleRecords = await lifecycleRepo.list();
+if (lifecycleRecords.length !== 2 || new Set(lifecycleRecords.map((entry) => entry.id)).size !== 2) {
+  throw new Error('Workspace import: resolving a collision must preserve both investigations.');
+}
+
+// UI safety: deletion is disabled until the exact investigation name is typed.
+const investigationListSource = readFileSync(
+  new URL('../src/lib/components/InvestigationList.svelte', import.meta.url),
+  'utf8',
+);
+if (
+  !investigationListSource.includes('deleteName !== investigation.name') ||
+  !investigationListSource.includes('await onDelete(investigation.id)')
+) {
+  throw new Error('Workspace delete: permanent deletion must require the exact name.');
+}
 
 // Regression: the list must leave its loading state after repository.list(),
 // including when that call fails. Otherwise the empty list stays hidden.

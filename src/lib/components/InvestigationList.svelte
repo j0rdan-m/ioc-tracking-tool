@@ -9,9 +9,11 @@
    *
    * @type {{ investigations: import('../types.js').WorkspaceInvestigation[], loading: boolean,
    *           onOpen: (id: string) => void,
-   *           onCreate: (input: { name: string, description?: string, tags?: string[] }) => Promise<void> }}
+   *           onCreate: (input: { name: string, description?: string, tags?: string[] }) => Promise<void>,
+   *           onDuplicate: (id: string) => Promise<void>,
+   *           onDelete: (id: string) => Promise<void> }}
    */
-  let { investigations, loading, onOpen, onCreate } = $props();
+  let { investigations, loading, onOpen, onCreate, onDuplicate, onDelete } = $props();
 
   let query = $state('');
   let showCreate = $state(false);
@@ -20,6 +22,10 @@
   let tagsDraft = $state('');
   let saving = $state(false);
   let error = $state('');
+  let actionId = $state(/** @type {string | null} */ (null));
+  let actionError = $state('');
+  let deleteId = $state(/** @type {string | null} */ (null));
+  let deleteName = $state('');
 
   const filtered = $derived(filterWorkspaceList(investigations, query));
 
@@ -41,6 +47,49 @@
       error = cause instanceof Error ? cause.message : 'Could not create the investigation.';
     } finally {
       saving = false;
+    }
+  }
+
+  /** @param {string} id */
+  async function duplicate(id) {
+    if (actionId !== null) return;
+    actionId = id;
+    actionError = '';
+    try {
+      await onDuplicate(id);
+    } catch (cause) {
+      actionError = cause instanceof Error ? cause.message : 'Could not duplicate the investigation.';
+    } finally {
+      actionId = null;
+    }
+  }
+
+  /** @param {string} id */
+  function requestDelete(id) {
+    actionError = '';
+    deleteId = id;
+    deleteName = '';
+  }
+
+  function cancelDelete() {
+    if (actionId !== null) return;
+    deleteId = null;
+    deleteName = '';
+  }
+
+  /** @param {import('../types.js').WorkspaceInvestigation} investigation */
+  async function confirmDelete(investigation) {
+    if (actionId !== null || deleteName !== investigation.name) return;
+    actionId = investigation.id;
+    actionError = '';
+    try {
+      await onDelete(investigation.id);
+      deleteId = null;
+      deleteName = '';
+    } catch (cause) {
+      actionError = cause instanceof Error ? cause.message : 'Could not delete the investigation.';
+    } finally {
+      actionId = null;
     }
   }
 </script>
@@ -83,21 +132,44 @@
     </p>
   {:else}
     <p class="list__count">{filtered.length} investigation(s)</p>
+    {#if actionError}<p class="list__action-error" role="alert">{actionError}</p>{/if}
     <div class="list__items">
       {#each filtered as investigation (investigation.id)}
         {@const stats = investigationStats(investigation)}
-        <button type="button" class="card" onclick={() => onOpen(investigation.id)}>
-          <span class="card__head">
-            <strong>{investigation.name}</strong>
-            <span class="card__status">{STATUS_LABELS[investigation.status]}</span>
-          </span>
-          {#if investigation.description}<span class="card__description">{investigation.description}</span>{/if}
-          {#if investigation.tags.length > 0}<span class="card__tags">{investigation.tags.join(' · ')}</span>{/if}
-          <span class="card__stats">
-            {stats.indicators} IoCs · {stats.relationships} relationships · Updated
-            {formatTimestamp(investigation.updatedAt)} UTC
-          </span>
-        </button>
+        <article class="card">
+          <button type="button" class="card__open" aria-label={`Open ${investigation.name}`} onclick={() => onOpen(investigation.id)}>
+            <span class="card__head">
+              <strong>{investigation.name}</strong>
+              <span class="card__status">{STATUS_LABELS[investigation.status]}</span>
+            </span>
+            {#if investigation.description}<span class="card__description">{investigation.description}</span>{/if}
+            {#if investigation.tags.length > 0}<span class="card__tags">{investigation.tags.join(' · ')}</span>{/if}
+            <span class="card__stats">
+              {stats.indicators} IoCs · {stats.relationships} relationships · Updated
+              {formatTimestamp(investigation.updatedAt)} UTC
+            </span>
+          </button>
+          <div class="card__actions">
+            <button type="button" disabled={actionId !== null} onclick={() => duplicate(investigation.id)}>
+              {actionId === investigation.id ? 'Duplicating…' : 'Duplicate'}
+            </button>
+            <button type="button" class="card__delete-trigger" disabled={actionId !== null} onclick={() => requestDelete(investigation.id)}>Delete</button>
+          </div>
+          {#if deleteId === investigation.id}
+            <form class="delete" onsubmit={(event) => { event.preventDefault(); confirmDelete(investigation); }}>
+              <label class="delete__field">
+                <span>Type <code>{investigation.name}</code> to confirm permanent deletion.</span>
+                <input bind:value={deleteName} autocomplete="off" aria-label={`Confirm deletion of ${investigation.name}`} />
+              </label>
+              <div class="delete__actions">
+                <button type="button" disabled={actionId !== null} onclick={cancelDelete}>Cancel</button>
+                <button type="submit" class="delete__confirm" disabled={actionId !== null || deleteName !== investigation.name}>
+                  {actionId === investigation.id ? 'Deleting…' : 'Delete permanently'}
+                </button>
+              </div>
+            </form>
+          {/if}
+        </article>
       {/each}
     </div>
   {/if}
@@ -147,7 +219,9 @@
   }
 
   .list__create,
-  .card {
+  .card__open,
+  .card__actions button,
+  .delete button {
     font: inherit;
     cursor: pointer;
   }
@@ -187,7 +261,8 @@
     resize: vertical;
   }
 
-  .create__error {
+  .create__error,
+  .list__action-error {
     margin: 0;
     color: var(--color-danger);
     font-size: var(--font-size-xs);
@@ -213,9 +288,6 @@
   .card {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-4);
-    text-align: left;
     color: var(--color-text);
     background: var(--color-surface-raised);
     border: var(--border-width) solid var(--color-border);
@@ -226,6 +298,86 @@
   .card:hover {
     border-color: var(--color-accent);
     background: var(--color-accent-soft);
+  }
+
+  .card__open {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    text-align: left;
+    color: inherit;
+    background: transparent;
+    border: 0;
+  }
+
+  .card__open:focus-visible,
+  .card__actions button:focus-visible,
+  .delete button:focus-visible,
+  .delete input:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+  }
+
+  .card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: 0 var(--space-4) var(--space-4);
+  }
+
+  .card__actions button,
+  .delete button {
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-size-xs);
+    color: var(--color-text-muted);
+    background: var(--color-surface-sunken);
+    border: var(--border-width) solid var(--color-border);
+    border-radius: var(--radius-md);
+  }
+
+  .card__delete-trigger,
+  .delete__confirm {
+    color: var(--color-danger) !important;
+  }
+
+  .card__actions button:disabled,
+  .delete button:disabled {
+    opacity: var(--opacity-disabled);
+    cursor: not-allowed;
+  }
+
+  .delete {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background: var(--color-danger-soft);
+    border-top: var(--border-width) solid var(--color-danger-border);
+  }
+
+  .delete__field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+  }
+
+  .delete__field code {
+    overflow-wrap: anywhere;
+    color: var(--color-text);
+  }
+
+  .delete input {
+    width: 100%;
+  }
+
+  .delete__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--space-2);
   }
 
   .card__head {

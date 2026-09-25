@@ -5,7 +5,7 @@
  * @module workspace/import
  */
 
-import { sanitizeInvestigation } from './investigation-model.js';
+import { duplicateInvestigation, sanitizeInvestigation } from './investigation-model.js';
 
 const MAX_IMPORT_BYTES = 5_000_000;
 
@@ -44,4 +44,28 @@ export function parseWorkspaceImport(text) {
         ? payload.generatedAt
         : null,
   };
+}
+
+/**
+ * Prevents a local import from replacing an investigation with the same id.
+ * A collision becomes an independent working copy with an explicit name; the
+ * caller still performs the single repository save.
+ *
+ * @param {unknown} value
+ * @param {Iterable<string>} existingIds
+ * @param {{ name?: string, now?: string }} [options]
+ * @returns {import('../../types.js').WorkspaceInvestigation}
+ */
+export function resolveWorkspaceImportCollision(value, existingIds, options = {}) {
+  const investigation = sanitizeInvestigation(value);
+  if (!investigation) {
+    throw new TypeError('Workspace import: the selected investigation is invalid.');
+  }
+  if (!new Set(existingIds).has(investigation.id)) {
+    return investigation;
+  }
+  return duplicateInvestigation(investigation, {
+    name: options.name ?? `${investigation.name} (Imported copy)`,
+    now: options.now,
+  });
 }
