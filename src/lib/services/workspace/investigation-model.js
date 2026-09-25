@@ -22,6 +22,7 @@
 
 import { detectIocType } from '../../utils/detect-ioc-type.js';
 import { normalizeTag } from '../../utils/history-filter.js';
+import { sanitizeProviderAnalysis } from '../../utils/provider-response.js';
 import { defangIoc, normalizeIoc, refangValue } from '../../utils/refang.js';
 import { INVESTIGATION_VERDICTS } from '../investigation-history.js';
 
@@ -904,10 +905,7 @@ function sanitizeNode(value) {
       : 'manual',
     verdict: INVESTIGATION_VERDICTS.includes(value.verdict) ? value.verdict : 'unknown',
     notes: typeof value.notes === 'string' ? value.notes : '',
-    analysis: isObject(value.analysis) && typeof value.analysis.checkedAt === 'string' &&
-      Array.isArray(value.analysis.checks)
-      ? { checkedAt: value.analysis.checkedAt, checks: value.analysis.checks }
-      : null,
+    analysis: sanitizeProviderAnalysis(value.analysis),
     seed: value.seed === true,
     depth,
     tags: normalizeTags(value.tags),

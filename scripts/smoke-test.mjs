@@ -30,6 +30,14 @@ import { defangIoc, normalizeIoc, refang, refangValue } from '../src/lib/utils/r
 import { parseHeaders } from '../src/lib/utils/email-header-parser.js';
 import { analyzeHeaders } from '../src/lib/utils/email-header-analyzer.js';
 import {
+  ANALYSIS_RAW_MAX_BYTES,
+  PROVIDER_RAW_MAX_BYTES,
+  boundHistoryRawResponses,
+  createProviderRawResponse,
+  sanitizeProviderAnalysis,
+} from '../src/lib/utils/provider-response.js';
+import { buildAnalysisSnapshot } from '../src/lib/utils/history-filter.js';
+import {
   ExportOptionsDefaults,
   buildExportFilename,
   buildExportModel,
@@ -403,6 +411,14 @@ if (!ipIntel.fields.some((field) => field.label === 'Company' && field.value ===
 if (!ipIntel.fields.some((field) => field.label === 'Tor exit node' && field.tone === 'bad')) {
   throw new Error('Fast analyze: ip-intel should flag is_tor with a bad tone.');
 }
+if (
+  ipIntel.raw?.status !== 200 ||
+  !ipIntel.raw.url.includes('api.ipapi.is') ||
+  !ipIntel.raw.body.includes('is_tor') ||
+  ipIntel.raw.truncated
+) {
+  throw new Error('Fast analyze: successful provider responses must retain bounded raw metadata.');
+}
 const ipRdap = await ipChecks[1].run('8.8.8.8');
 if (!ipRdap.fields.some((field) => field.label === 'Network' && field.value === 'GOGL')) {
   throw new Error('Fast analyze: ip-rdap should expose the network name.');
@@ -429,6 +445,74 @@ if (domainCerts.status !== 'ok' || !domainCerts.summary?.includes('3 certificate
 const sampleNames = domainCerts.fields.find((field) => field.label === 'Sample names')?.value ?? '';
 if (sampleNames !== 'example.com') {
   throw new Error(`Fast analyze: crt.sh names should be deduplicated and wildcard-stripped, got "${sampleNames}".`);
+}
+
+// Raw provider bodies are bounded by UTF-8 bytes, not JavaScript characters.
+const oversizedRaw = createProviderRawResponse({
+  url: 'https://example.test/raw',
+  status: 200,
+  contentType: 'application/json',
+  body: 'é'.repeat(PROVIDER_RAW_MAX_BYTES),
+});
+if (
+  !oversizedRaw.truncated ||
+  oversizedRaw.storedBytes > PROVIDER_RAW_MAX_BYTES ||
+  oversizedRaw.originalBytes <= PROVIDER_RAW_MAX_BYTES ||
+  oversizedRaw.body.includes('\uFFFD')
+) {
+  throw new Error('Provider raw: oversized UTF-8 bodies must be truncated at a character boundary.');
+}
+const rawFixtureCheck = (/** @type {string} */ id, /** @type {number} */ size) => ({
+  id,
+  label: id,
+  toolId: null,
+  status: 'ok',
+  ms: 1,
+  summary: null,
+  fields: [],
+  message: null,
+  raw: createProviderRawResponse({ url: `https://example.test/${id}`, status: 200, body: 'x'.repeat(size) }),
+});
+const sanitizedRaw = sanitizeProviderAnalysis({
+  checkedAt: '2026-09-25T12:00:00.000Z',
+  checks: [rawFixtureCheck('one', 40_000), rawFixtureCheck('two', 40_000), rawFixtureCheck('three', 1_000), { id: 'invalid' }],
+});
+if (
+  sanitizedRaw?.checks.length !== 3 ||
+  sanitizedRaw.checks[0].raw === null ||
+  sanitizedRaw.checks[1].raw === null ||
+  sanitizedRaw.checks[2].raw !== null ||
+  sanitizedRaw.checks[0].raw.storedBytes + sanitizedRaw.checks[1].raw.storedBytes > ANALYSIS_RAW_MAX_BYTES
+) {
+  throw new Error('Provider raw: one analysis must retain at most 64 KiB across its checks.');
+}
+const snapshotWithRaw = buildAnalysisSnapshot([{
+  def: { id: 'raw-check', label: 'Raw check', toolId: null, run: async () => /** @type {any} */ ({}) },
+  status: 'ok',
+  result: {
+    status: 'ok',
+    summary: null,
+    fields: [],
+    message: null,
+    raw: createProviderRawResponse({ url: 'https://example.test/snapshot', status: 200, body: '{"ok":true}' }),
+  },
+  ms: 2,
+}], '2026-09-25T12:00:00.000Z');
+if (snapshotWithRaw.checks[0].raw?.body !== '{"ok":true}') {
+  throw new Error('Provider raw: analysis snapshots must retain the raw provider body.');
+}
+const budgetEntries = [
+  { id: 'old', lastAnalyzedAt: '2026-09-24T12:00:00.000Z', latestAnalysis: { checkedAt: '2026-09-24T12:00:00.000Z', checks: [rawFixtureCheck('old', 20)] } },
+  { id: 'new', lastAnalyzedAt: '2026-09-25T12:00:00.000Z', latestAnalysis: { checkedAt: '2026-09-25T12:00:00.000Z', checks: [rawFixtureCheck('new', 20)] } },
+];
+const budgetBefore = JSON.stringify(budgetEntries);
+const budgeted = boundHistoryRawResponses(budgetEntries, 25);
+if (
+  budgeted[0].latestAnalysis.checks[0].raw !== null ||
+  budgeted[1].latestAnalysis.checks[0].raw === null ||
+  JSON.stringify(budgetEntries) !== budgetBefore
+) {
+  throw new Error('Provider raw: the rolling history budget must drop oldest bodies without mutation.');
 }
 
 // URL checks read the hostname out of the URL (even without a scheme).

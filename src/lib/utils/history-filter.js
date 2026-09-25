@@ -5,6 +5,8 @@
  * No DOM, no network — exercised by `npm run smoke`.
  */
 
+import { sanitizeProviderAnalysis } from './provider-response.js';
+
 /**
  * Builds the storable snapshot of a finished analysis (provider results only:
  * never a verdict, which stays an analyst input).
@@ -16,7 +18,7 @@
  * @returns {import('../types.js').InvestigationAnalysisSnapshot}
  */
 export function buildAnalysisSnapshot(checkStates, checkedAt) {
-  return {
+  return sanitizeProviderAnalysis({
     checkedAt,
     checks: checkStates.map((state) => ({
       id: state.def.id,
@@ -27,8 +29,9 @@ export function buildAnalysisSnapshot(checkStates, checkedAt) {
       summary: state.result?.summary ?? null,
       fields: state.result?.fields ?? [],
       message: state.result?.message ?? null,
+      raw: state.result?.raw ?? null,
     })),
-  };
+  }) ?? { checkedAt, checks: [] };
 }
 
 /**

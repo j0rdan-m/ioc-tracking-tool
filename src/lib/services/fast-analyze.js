@@ -10,6 +10,8 @@
  * so the UI can degrade per provider.
  */
 
+import { createProviderRawResponse } from '../utils/provider-response.js';
+
 /**
  * @typedef {Object} FastCheckField
  * @property {string} label Field label.
@@ -23,6 +25,7 @@
  * @property {string | null} summary    One-line takeaway shown under the title.
  * @property {FastCheckField[]} fields  Key facts extracted from the response.
  * @property {string | null} message    Human-readable detail for empty/error.
+ * @property {import('../types.js').ProviderRawResponse | null} raw Bounded raw response, when available.
  */
 
 /**
@@ -120,6 +123,7 @@ export class FastAnalyzerService {
             summary: null,
             fields: [],
             message: describeError(error),
+            raw: null,
           };
         }
       },
@@ -131,7 +135,7 @@ export class FastAnalyzerService {
    *
    * @param {string} url
    * @param {{ timeoutMs?: number, headers?: Record<string, string>, signal?: AbortSignal }} [options]
-   * @returns {Promise<any>} Parsed JSON body.
+   * @returns {Promise<{ data: any, raw: import('../types.js').ProviderRawResponse }>}
    */
   async #fetchJson(url, options = {}) {
     const { timeoutMs = this.#timeoutMs, headers, signal } = options;
@@ -150,7 +154,24 @@ export class FastAnalyzerService {
         }
         throw new Error(`HTTP ${response.status}`);
       }
-      return await response.json();
+      const body = typeof response.text === 'function'
+        ? await response.text()
+        : JSON.stringify(await response.json());
+      let data;
+      try {
+        data = JSON.parse(body);
+      } catch {
+        throw new Error('The provider returned invalid JSON.');
+      }
+      return {
+        data,
+        raw: createProviderRawResponse({
+          url,
+          status: response.status,
+          contentType: response.headers?.get?.('content-type') ?? null,
+          body,
+        }),
+      };
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener('abort', onExternalAbort);
@@ -167,15 +188,16 @@ export class FastAnalyzerService {
    */
   async #ipIntel(value, options = {}) {
     const ip = value.trim();
-    /** @type {any} */
-    let data;
+    /** @type {{ data: any, raw: import('../types.js').ProviderRawResponse }} */
+    let payload;
     try {
-      data = await this.#fetchJson(`https://api.ipapi.is/?q=${encodeURIComponent(ip)}`, options);
+      payload = await this.#fetchJson(`https://api.ipapi.is/?q=${encodeURIComponent(ip)}`, options);
     } catch {
-      data = await this.#fetchJson(`https://ipwho.is/${encodeURIComponent(ip)}`, options);
+      payload = await this.#fetchJson(`https://ipwho.is/${encodeURIComponent(ip)}`, options);
     }
+    const { data, raw } = payload;
     if (!data || data.success === false) {
-      return emptyResult('No data returned for this IP.');
+      return emptyResult('No data returned for this IP.', raw);
     }
     /** @type {FastCheckField[]} */
     const fields = [];
@@ -212,7 +234,7 @@ export class FastAnalyzerService {
       }
     }
     const summary = [company, location].filter(Boolean).join(' · ') || null;
-    return { status: 'ok', summary, fields, message: null };
+    return { status: 'ok', summary, fields, message: null, raw };
   }
 
   /**
@@ -225,7 +247,7 @@ export class FastAnalyzerService {
    */
   async #rdapIp(value, options = {}) {
     const ip = value.trim();
-    const data = await this.#fetchJson(`https://rdap.org/ip/${encodeURIComponent(ip)}`, {
+    const { data, raw } = await this.#fetchJson(`https://rdap.org/ip/${encodeURIComponent(ip)}`, {
       ...options,
       headers: { Accept: 'application/rdap+json, application/json', ...options.headers },
     });
@@ -248,9 +270,9 @@ export class FastAnalyzerService {
       fields.push({ label: 'Registrant', value: registrant });
     }
     if (fields.length === 0) {
-      return emptyResult('RDAP returned no usable data for this IP.');
+      return emptyResult('RDAP returned no usable data for this IP.', raw);
     }
-    return { status: 'ok', summary: data?.name ? String(data.name) : null, fields, message: null };
+    return { status: 'ok', summary: data?.name ? String(data.name) : null, fields, message: null, raw };
   }
 
   /**
@@ -263,7 +285,7 @@ export class FastAnalyzerService {
    */
   async #rdapDomain(value, options = {}) {
     const domain = bareDomain(value);
-    const data = await this.#fetchJson(`https://rdap.org/domain/${encodeURIComponent(domain)}`, {
+    const { data, raw } = await this.#fetchJson(`https://rdap.org/domain/${encodeURIComponent(domain)}`, {
       ...options,
       headers: { Accept: 'application/rdap+json, application/json', ...options.headers },
     });
@@ -295,13 +317,14 @@ export class FastAnalyzerService {
       fields.push({ label: 'Nameservers', value: nameservers.join(', ') });
     }
     if (fields.length === 0) {
-      return emptyResult('RDAP returned no usable data for this domain (some TLDs do not publish it).');
+      return emptyResult('RDAP returned no usable data for this domain (some TLDs do not publish it).', raw);
     }
     return {
       status: 'ok',
       summary: registrar ? `Registered via ${registrar}` : null,
       fields,
       message: null,
+      raw,
     };
   }
 
@@ -316,7 +339,7 @@ export class FastAnalyzerService {
    */
   async #crtsh(value, options = {}) {
     const domain = bareDomain(value);
-    const entries = await this.#fetchJson(
+    const { data: entries, raw } = await this.#fetchJson(
       `https://crt.sh/?q=${encodeURIComponent(domain)}&output=json`,
       {
         timeoutMs: Math.max(this.#timeoutMs, 20000),
@@ -325,7 +348,7 @@ export class FastAnalyzerService {
       },
     );
     if (!Array.isArray(entries) || entries.length === 0) {
-      return emptyResult('No certificate found for this domain in the CT logs.');
+      return emptyResult('No certificate found for this domain in the CT logs.', raw);
     }
     /** @type {string[]} */
     const names = [];
@@ -367,15 +390,18 @@ export class FastAnalyzerService {
       summary: `${entries.length} certificate entries · latest issued ${latestIssued ?? 'unknown'}`,
       fields,
       message: null,
+      raw,
     };
   }
 }
 
 /**
+ * @param {string} message
+ * @param {import('../types.js').ProviderRawResponse | null} [raw]
  * @returns {FastCheckResult}
  */
-function emptyResult(message) {
-  return { status: 'empty', summary: null, fields: [], message };
+function emptyResult(message, raw = null) {
+  return { status: 'empty', summary: null, fields: [], message, raw };
 }
 
 /**

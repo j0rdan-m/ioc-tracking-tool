@@ -164,6 +164,7 @@
             summary: null,
             fields: [],
             message: 'Unexpected failure.',
+            raw: null,
           };
         })
         .finally(() => {

@@ -11,6 +11,7 @@
  * defanged spellings of the same indicator map to a single entry, which is
  * updated — never duplicated — when it is analysed again.
  */
+import { boundHistoryRawResponses, sanitizeProviderAnalysis } from '../utils/provider-response.js';
 
 /**
  * Local aliases keep the file body readable while still letting svelte-check
@@ -259,9 +260,11 @@ export class InvestigationHistoryService {
       if (!Array.isArray(parsed)) {
         return [];
       }
-      return parsed
-        .map((value) => this.#sanitize(value))
-        .filter((/** @type {InvestigationEntry | null} */ entry) => entry !== null);
+      return boundHistoryRawResponses(
+        parsed
+          .map((value) => this.#sanitize(value))
+          .filter((/** @type {InvestigationEntry | null} */ entry) => entry !== null),
+      );
     } catch {
       return [];
     }
@@ -295,12 +298,7 @@ export class InvestigationHistoryService {
         ? value.tags.filter((/** @type {unknown} */ tag) => typeof tag === 'string' && tag !== '')
         : [],
       notes: typeof value.notes === 'string' ? value.notes : '',
-      latestAnalysis:
-        isObject(value.latestAnalysis) &&
-        typeof value.latestAnalysis.checkedAt === 'string' &&
-        Array.isArray(value.latestAnalysis.checks)
-          ? { checkedAt: value.latestAnalysis.checkedAt, checks: value.latestAnalysis.checks }
-          : null,
+      latestAnalysis: sanitizeProviderAnalysis(value.latestAnalysis),
       source: INVESTIGATION_SOURCES.includes(value.source) ? value.source : null,
     };
   }
@@ -308,7 +306,8 @@ export class InvestigationHistoryService {
   /** @param {InvestigationEntry[]} entries */
   #write(entries) {
     try {
-      this.#storage.setItem(this.#key, JSON.stringify(entries));
+      const bounded = boundHistoryRawResponses(entries);
+      this.#storage.setItem(this.#key, JSON.stringify(bounded));
     } catch {
       // Storage full or denied: the memory fallback keeps the session usable.
     }

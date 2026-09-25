@@ -93,6 +93,7 @@ export class WorkspacePivotService {
           summary: null,
           fields: [],
           message: error instanceof Error ? error.message : 'Unexpected pivot failure.',
+          raw: null,
         };
       }
       checks.push({

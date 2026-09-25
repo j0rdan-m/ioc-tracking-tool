@@ -147,6 +147,7 @@ export function runBatchAnalysis(iocs, getChecks, options = {}) {
             summary: null,
             fields: [],
             message: error instanceof Error ? error.message : 'Unexpected failure.',
+            raw: null,
           };
         }
         state.ms = Math.round(performance.now() - startedAt);

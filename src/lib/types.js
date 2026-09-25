@@ -71,6 +71,20 @@
  */
 
 /**
+ * Bounded raw response captured directly from a keyless provider after an
+ * explicit browser lookup. The body is inert serialized text, never HTML.
+ *
+ * @typedef {Object} ProviderRawResponse
+ * @property {string} url Exact provider URL used for the lookup.
+ * @property {number} status HTTP status returned by the provider.
+ * @property {string | null} contentType Response content type, when exposed by CORS.
+ * @property {string} body Raw response text, possibly truncated.
+ * @property {number} originalBytes UTF-8 size before truncation.
+ * @property {number} storedBytes UTF-8 size of the retained body.
+ * @property {boolean} truncated Whether `body` is a bounded prefix.
+ */
+
+/**
  * Outcome of a single fast-analyze check against one provider.
  *
  * @typedef {Object} FastCheckResult
@@ -78,6 +92,7 @@
  * @property {string | null} summary    One-line takeaway shown under the title.
  * @property {FastCheckField[]} fields  Key facts extracted from the response.
  * @property {string | null} message    Human-readable detail for empty/error.
+ * @property {ProviderRawResponse | null} raw Bounded raw response, when available.
  */
 
 /**
@@ -147,6 +162,7 @@
  * @property {string | null} summary Provider one-liner.
  * @property {FastCheckField[]} fields Key facts returned by the provider.
  * @property {string | null} message Provider message (error detail included).
+ * @property {ProviderRawResponse | null} raw Bounded raw response, when available.
  */
 
 /**
