@@ -42,6 +42,10 @@
   let submittedRaw = $state('');
   let showExport = $state(false);
   let showAddToInvestigation = $state(false);
+  /** Show save analysis dialog */
+  let showSaveAnalysis = $state(false);
+  /** @type {string | null} */
+  let savedAnalysisId = $state(null);
   /** @type {import('../types.js').WorkspaceIndicatorInput[]} */
   let addToInvestigationInputs = $state([]);
 
@@ -98,6 +102,39 @@
   function close() {
     open = false;
     showAddToInvestigation = false;
+  }
+
+  /** Build an InvestigationEntry from the current analysis and persist it.
+   *  If an entry with the same id already exists, it is updated (never duplicated).
+   */
+  function saveAnalysis() {
+    if (iocTypeId === null || submittedValue === '') return;
+    const typeId = /** @type {import('../types.js').IocTypeId} */ (iocTypeId);
+    const normalized = normalizeIoc(submittedValue, typeId);
+    const id = `${typeId}:${normalized}`;
+
+    const latestAnalysis = completedAnalysis;
+    if (!latestAnalysis) return;
+
+    const verdict = latestAnalysis.checks?.length
+      ? latestAnalysis.checks.some((c) => c.status === 'error')
+        ? 'malicious'
+        : 'benign'
+      : 'unknown';
+
+    history.upsert(
+      { id, typeId, normalized, defanged: defangIoc(normalized, typeId) },
+      {
+        checkedAt: new Date().toISOString(),
+        checks: latestAnalysis.checks,
+      },
+      'manual',
+    );
+    savedAnalysisId = id;
+    showSaveAnalysis = false;
+    notice = 'Saved to investigation';
+    // Clear notice after 3 seconds
+    setTimeout(() => { notice = ''; }, 3000);
   }
 
   /** @param {KeyboardEvent} event */
@@ -415,7 +452,23 @@
       <p class="modal__foot">
         Queries go straight from your browser to the providers (no account, no key, nothing sent to
         this site). Only investigate indicators you are authorized to.
+        {#if completedAnalysis && !showSaveAnalysis}
+          <button class="modal__btn modal__btn--save" onclick={() => showSaveAnalysis = true}>
+            💾 Save to investigation
+          </button>
+        {/if}
       </p>
+    </div>
+  </div>
+{/if}
+
+{#if showSaveAnalysis}
+  <div class="modal__save-dialog" role="dialog" aria-modal="true" aria-labelledby="save-dialog-title">
+    <h3 id="save-dialog-title">Save to investigation</h3>
+    <p>Save the current analysis to your local investigation history?</p>
+    <div class="modal__foot">
+      <button class="modal__btn" onclick={() => { showSaveAnalysis = false; }}>Cancel</button>
+      <button class="modal__btn modal__btn--primary" onclick={() => { saveAnalysis(); showSaveAnalysis = false; }}>Save</button>
     </div>
   </div>
 {/if}

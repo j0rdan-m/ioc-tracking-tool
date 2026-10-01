@@ -657,7 +657,16 @@
                     >
                       {savedKey === ioc.id ? 'Saved locally ✓' : '🗒 Save to history'}
                     </button>
-                     <button type="button" class="ioc__copy" onclick={() => openAddToInvestigation([ioc])}>🕸 Add to investigation</button>
+
+                    {#if history.get(ioc.id)}
+                      <button type="button" class="ioc__investigate--saved"
+                        title="Saved to investigation"
+                        aria-label="Saved to investigation">
+                        🕸 Saved
+                      </button>
+                    {:else}
+                      <button type="button" class="ioc__copy" onclick={() => openAddToInvestigation([ioc])}>🕸 Add to investigation</button>
+                    {/if}
                     {#if analyzableTypes.has(ioc.typeId)}
                       <button
                         type="button"
@@ -1018,6 +1027,18 @@
   .ioc__investigate[aria-expanded='true'] {
     color: var(--color-text);
     border-color: var(--color-accent);
+  }
+
+  .ioc__investigate--saved {
+    color: var(--color-success);
+    background: var(--color-success-soft);
+    border-color: var(--color-success);
+    padding: var(--pill-padding-y) var(--space-2);
+    font-size: var(--font-size-2xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: var(--letter-spacing-snug);
+    text-transform: uppercase;
+    border-radius: var(--radius-pill);
   }
 
   .ioc__value {
