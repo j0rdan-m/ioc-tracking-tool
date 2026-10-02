@@ -6,6 +6,7 @@
     setNodeHidden,
     setNodeNotes,
     setNodeVerdict,
+    setNodeAnalysis,
   } from '../services/workspace/investigation-model.js';
   import { applyPivotCandidates } from '../services/workspace/intake.js';
   import { getDeepLinks } from '../utils/deep-links.js';
@@ -27,6 +28,7 @@
   let copied = $state(false);
   let saving = $state(false);
   let pivotLoading = $state(false);
+  let analysisRunning = $state(false);
   /** @type {import('../services/workspace/pivot-service.js').PivotResult | null} */
   let pivotResult = $state(null);
   /** @type {string[]} */
@@ -126,6 +128,21 @@
     pivotResult = null;
     selectedPivotKeys = [];
   }
+
+  async function runNodeAnalysis() {
+    if (analysisRunning) return;
+    analysisRunning = true;
+    try {
+      const now = new Date().toISOString();
+      const next = setNodeAnalysis(investigation, node.id, { checkedAt: now }, now);
+      await commit(next);
+    } catch (cause) {
+      // Analysis failed - keep UI responsive
+      throw cause;
+    } finally {
+      analysisRunning = false;
+    }
+  }
 </script>
 
 <aside class="details" aria-label={`Details for ${node.defanged}`}>
@@ -151,6 +168,37 @@
         <option value="suspicious">Suspicious</option><option value="malicious">Malicious</option>
       </select>
     </section>
+
+    {#if node.analysis}
+    <section>
+      <h4>Latest analysis</h4>
+      <p>Checked {formatTimestamp(node.analysis.checkedAt)} UTC</p>
+      <SignalScore analysis={node.analysis} compact />
+      <ul>
+        {#each node.analysis.checks as check (check.id)}
+          <li><strong>{check.label}</strong> <span>{check.status}</span>
+            {#if check.summary}<small>{check.summary}</small>{/if}
+            <ProviderRawResponse raw={check.raw} />
+          </li>
+        {/each}
+      </ul>
+    </section>
+    {/if}
+
+    {#if !node.analysis}
+    <section>
+      <h4>Analysis</h4>
+      <button
+        disabled={analysisRunning}
+        onclick={() => runNodeAnalysis()}
+        class="status--muted"
+        role="button"
+        aria-label={analysisRunning ? 'Analysis in progress' : 'Run analysis on this indicator'}
+      >
+        {analysisRunning ? 'Analyzing…' : 'Run analysis'}
+      </button>
+    </section>
+    {/if}
 
     <section>
       <h4>Connections</h4>

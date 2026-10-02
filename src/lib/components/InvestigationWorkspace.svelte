@@ -306,6 +306,9 @@
             </button>
           {/each}
         </div>
+        {#if selectedNodeId}
+          <GraphNodeDetails node={selectedNode} investigation={investigation} catalog={catalog} onClose={closeDetails} onAnalyze={onAnalyze} onSave={commit} />
+        {/if}
       {/if}
 
       <div class="indicators__relations-head">
