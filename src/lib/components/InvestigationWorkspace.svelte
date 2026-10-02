@@ -306,7 +306,7 @@
             </button>
           {/each}
         </div>
-        {#if selectedNodeId}
+        {#if selectedNodeId && selectedNode}
           <GraphNodeDetails node={selectedNode} investigation={investigation} catalog={catalog} onClose={closeDetails} onAnalyze={onAnalyze} onSave={commit} />
         {/if}
       {/if}

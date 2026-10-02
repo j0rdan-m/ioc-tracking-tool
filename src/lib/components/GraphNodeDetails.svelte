@@ -134,7 +134,7 @@
     analysisRunning = true;
     try {
       const now = new Date().toISOString();
-      const next = setNodeAnalysis(investigation, node.id, { checkedAt: now }, now);
+      const next = setNodeAnalysis(investigation, node.id, { checkedAt: now, checks: [] }, now);
       await commit(next);
     } catch (cause) {
       // Analysis failed - keep UI responsive
