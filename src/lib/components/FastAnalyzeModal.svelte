@@ -42,8 +42,6 @@
   let submittedRaw = $state('');
   let showExport = $state(false);
   let showAddToInvestigation = $state(false);
-  /** Show save analysis dialog */
-  let showSaveAnalysis = $state(false);
   /** @type {string | null} */
   let savedAnalysisId = $state(null);
   /** @type {import('../types.js').WorkspaceIndicatorInput[]} */
@@ -104,10 +102,8 @@
     showAddToInvestigation = false;
   }
 
-  /** Build an InvestigationEntry from the current analysis and persist it.
-   *  If an entry with the same id already exists, it is updated (never duplicated).
-   */
-  function saveAnalysis() {
+  /** Saves the current analysis to local history (V1.3) AND adds to V2 investigation workspace. */
+  async function saveAnalysisAndAddToInvestigation() {
     if (iocTypeId === null || submittedValue === '') return;
     const typeId = /** @type {import('../types.js').IocTypeId} */ (iocTypeId);
     const normalized = normalizeIoc(submittedValue, typeId);
@@ -122,6 +118,7 @@
         : 'benign'
       : 'unknown';
 
+    // 1. Save to V1.3 local investigation history
     history.upsert(
       { id, typeId, normalized, defanged: defangIoc(normalized, typeId) },
       {
@@ -130,9 +127,23 @@
       },
       'manual',
     );
+
+    // 2. Add to V2 investigation workspace (open the AddToInvestigation modal)
+    const exportInput = sessionExport;
+    if (exportInput) {
+      addToInvestigationInputs = [{
+        typeId: exportInput.typeId,
+        normalized: exportInput.normalized,
+        defanged: exportInput.defanged,
+        raw: exportInput.raw ?? '',
+        source: 'manual',
+        latestAnalysis: exportInput.latestAnalysis,
+      }];
+      showAddToInvestigation = true;
+    }
+
     savedAnalysisId = id;
-    showSaveAnalysis = false;
-    notice = 'Saved to investigation';
+    notice = 'Saved and added to investigation';
     // Clear notice after 3 seconds
     setTimeout(() => { notice = ''; }, 3000);
   }
@@ -435,7 +446,7 @@
 
       {#if sessionExport}
         <div class="export__trigger">
-          <button type="button" class="fast__export" onclick={() => openAddToInvestigation(sessionExport)}>🕸 Add to investigation</button>
+          <button type="button" class="fast__export" onclick={saveAnalysisAndAddToInvestigation}>🕸 Add to investigation</button>
           <button
             type="button"
             class="fast__export"
@@ -452,23 +463,7 @@
       <p class="modal__foot">
         Queries go straight from your browser to the providers (no account, no key, nothing sent to
         this site). Only investigate indicators you are authorized to.
-        {#if completedAnalysis && !showSaveAnalysis}
-          <button class="modal__btn modal__btn--save" onclick={() => showSaveAnalysis = true}>
-            💾 Save to investigation
-          </button>
-        {/if}
       </p>
-    </div>
-  </div>
-{/if}
-
-{#if showSaveAnalysis}
-  <div class="modal__save-dialog" role="dialog" aria-modal="true" aria-labelledby="save-dialog-title">
-    <h3 id="save-dialog-title">Save to investigation</h3>
-    <p>Save the current analysis to your local investigation history?</p>
-    <div class="modal__foot">
-      <button class="modal__btn" onclick={() => { showSaveAnalysis = false; }}>Cancel</button>
-      <button class="modal__btn modal__btn--primary" onclick={() => { saveAnalysis(); showSaveAnalysis = false; }}>Save</button>
     </div>
   </div>
 {/if}
