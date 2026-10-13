@@ -118,7 +118,6 @@
         : 'benign'
       : 'unknown';
 
-    // 1. Save to V1.3 local investigation history
     history.upsert(
       { id, typeId, normalized, defanged: defangIoc(normalized, typeId) },
       {
@@ -315,10 +314,13 @@
       aria-labelledby="fast-analyze-title"
       tabindex="-1"
     >
-      <header class="modal__head">
-        <div>
-          <p class="modal__eyebrow">⚡ Fast analyze</p>
-          <h2 id="fast-analyze-title" class="modal__title">Quick lookups for one IoC</h2>
+      <header class="modal__head"
+          style="border-bottom: var(--border-width) solid var(--color-border); padding-bottom: var(--space-3);">
+        <div style="display: flex; align-items: center; gap: var(--space-3);">
+          <p class="modal__eyebrow"
+              style="color: var(--color-accent);">⚡ Fast analyze</p>
+          <h2 id="fast-analyze-title" class="modal__title"
+              style="font-size: var(--font-size-xl); letter-spacing: var(--letter-spacing-tight); color: var(--color-text);">Quick lookups for one IoC</h2>
         </div>
         <button type="button" class="modal__close" aria-label="Close" onclick={close}>✕</button>
       </header>
@@ -330,6 +332,7 @@
 
       <form
         class="modal__form"
+        style="gap: var(--space-3);"
         onsubmit={(event) => {
           event.preventDefault();
           start();
@@ -344,8 +347,30 @@
           aria-label="Indicator of compromise"
           spellcheck="false"
           autocomplete="off"
+          style="
+            min-height: 48px;
+            padding: var(--space-3) var(--space-4);
+            font-size: var(--font-size-base);
+            color: var(--color-text);
+            background: var(--color-surface);
+            border: var(--border-width) solid var(--color-border);
+            border-radius: var(--radius-md);
+            transition: var(--transition-field);
+          "
         />
-        <button type="submit" class="modal__start" disabled={phase === 'running' || value.trim() === ''}>
+        <button type="submit" class="modal__start"
+          disabled={phase === 'running' || value.trim() === ''}
+          style="
+            padding: var(--space-3) var(--space-6);
+            font: inherit;
+            font-weight: var(--font-weight-semibold);
+            color: var(--color-accent-contrast);
+            background: var(--color-accent);
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: var(--transition-colors);
+          ">
           Start
         </button>
       </form>

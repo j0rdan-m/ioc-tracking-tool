@@ -4,13 +4,17 @@
  * Direction:
  * - near-black graphite rather than blue SaaS navy
  * - warm amber/copper accent rather than neon cyan
- * - restrained elevation, almost no decorative glow
- * - tighter, squarer geometry
+ * - restrained elevation: shadows are functional, not decorative
+ * - intentional geometry: right angles where appropriate, corners only where they serve
  * - status colours remain functional and distinct
  * - category colours are deliberately desaturated
+ * - visual weight in typography, not decorative effects
+ * - this version: sharper geometry, stronger typographic hierarchy, accent used as
+ *   deliberate signal not background noise
  *
  * Components keep consuming the same tokens: this file can replace the
  * existing theme without changing component CSS.
+ * Redesign: sharper geometry, stronger hierarchy, accent as deliberate signal.
  * ========================================================================== */
 
 :root {
@@ -109,29 +113,29 @@
     'IBM Plex Mono', 'Cascadia Code', ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas,
     'Liberation Mono', monospace;
 
-  --font-size-2xs: 0.7rem; /* badges, meta lines */
-  --font-size-xs: 0.78rem; /* secondary labels, hints */
-  --font-size-sm: 0.84rem; /* compact body text, buttons */
-  --font-size-base: 0.91rem; /* default body text */
+  --font-size-2xs: 0.65rem; /* badges, meta lines - tighter */
+  --font-size-xs: 0.75rem; /* secondary labels, hints */
+  --font-size-sm: 0.8rem; /* compact body text, buttons */
+  --font-size-base: 0.88rem; /* default body text - reduced for tighter rhythm */
   --font-size-md: 1rem; /* emphasised body text, icon buttons */
-  --font-size-lg: 1.12rem; /* card titles */
-  --font-size-xl: 1.28rem; /* dialog titles */
-  --font-size-hero: clamp(2rem, 4vw, 3rem); /* page title */
+  --font-size-lg: 1.1rem; /* card titles */
+  --font-size-xl: 1.3rem; /* dialog titles */
+  --font-size-hero: clamp(2.2rem, 4vw, 3.5rem); /* page title - larger clamp */
 
   --font-weight-medium: 500;
   --font-weight-semibold: 600;
   --font-weight-bold: 700;
 
-  --line-height-body: 1.58;
-  --line-height-tight: 1.42;
-  --line-height-heading: 1.08;
+  --line-height-body: 1.5; /* tighter body line-height */
+  --line-height-tight: 1.35; /* for micro-copy, badges */
+  --line-height-heading: 1.05; /* even tighter headings */
   --line-height-solid: 1;
 
-  --letter-spacing-tight: -0.015em;
-  --letter-spacing-tighter: -0.035em;
-  --letter-spacing-wide: 0.16em; /* uppercase eyebrows */
-  --letter-spacing-wider: 0.11em; /* uppercase card categories */
-  --letter-spacing-snug: 0.055em; /* compact uppercase labels */
+  --letter-spacing-tight: -0.025em; /* tightened further */
+  --letter-spacing-tighter: -0.05em; /* for uppercase headings - more aggressive */
+  --letter-spacing-wide: 0.2em; /* eyebrows - broader, more deliberate */
+  --letter-spacing-wider: 0.15em; /* card categories - controlled */
+  --letter-spacing-snug: 0.05em; /* compact uppercase labels */
 
   /* ---------------------------------------------------------------------- *
    * 4. Shape — technical, compact, intentionally less rounded.              *
@@ -175,18 +179,18 @@
   --opacity-pulse-min: 0.45;
 
   /* ---------------------------------------------------------------------- *
-   * 6. Layout — preserve current geometry and information density.           *
+   * 6. Layout — intentional geometry and information hierarchy.              *
    * ---------------------------------------------------------------------- */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-7: 2rem;
-  --space-8: 2.5rem;
-  --space-9: 3rem;
-  --space-10: 3.5rem;
+  --space-1: 0.2rem; /* tightest inline spacing */
+  --space-2: 0.35rem; /* compact control spacing */
+  --space-3: 0.5rem; /* standard spacing, form groups */
+  --space-4: 0.75rem; /* card padding, section gaps */
+  --space-5: 1rem; /* page margins, tool spacing */
+  --space-6: 1.25rem; /* modal padding, form gaps */
+  --space-7: 1.5rem; /* page gap, footer margin */
+  --space-8: 1.8rem; /* maximal spacing between major sections */
+  --space-9: 2.2rem; /* generous spacing */
+  --space-10: 2.8rem; /* page padding */
 
   --app-max-width: 68rem;
   --modal-width-sm: 40rem;
