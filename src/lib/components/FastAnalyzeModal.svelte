@@ -513,6 +513,7 @@
     border-radius: var(--radius-md);
     cursor: pointer;
     transition: var(--transition-colors);
+    animation: var(--keyframe-hover) var(--duration-fast) var(--ease-standard);
   }
 
   .fast__export:hover {
@@ -534,6 +535,7 @@
     background: var(--color-surface);
     border: var(--border-width) solid var(--color-border);
     border-radius: var(--radius-md);
+    animation: var(--keyframe-pulse) var(--duration-fast) var(--ease-standard) infinite;
   }
 
   .check__head {

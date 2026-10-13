@@ -253,6 +253,17 @@
     background-color var(--duration-fast) var(--ease-standard),
     transform var(--duration-fast) var(--ease-standard);
 
+  /* Micro-animation keyframes */
+  --keyframe-pulse: 0% { opacity: var(--opacity-pulse-min); }
+    50% { opacity: 1; }
+    100% { opacity: var(--opacity-pulse-min); }
+
+  --keyframe-hover: 0% { background-color: transparent; }
+    100% { background-color: var(--color-accent-soft); }
+
+  --keyframe-focus: 0% { border-color: var(--color-border); }
+    100% { border-color: var(--color-accent); }
+
   /* ---------------------------------------------------------------------- *
    * 8. Category hues — quieter so content wins over decoration.             *
    * ---------------------------------------------------------------------- */
