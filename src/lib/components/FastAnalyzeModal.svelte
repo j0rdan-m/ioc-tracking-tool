@@ -534,7 +534,6 @@
     background: var(--color-surface);
     border: var(--border-width) solid var(--color-border);
     border-radius: var(--radius-md);
-    animation: var(--keyframe-pulse) var(--duration-fast) var(--ease-standard) infinite;
   }
 
   .check__head {
@@ -549,19 +548,30 @@
     height: var(--status-dot-size);
     border-radius: var(--radius-circle);
     background: var(--color-neutral-marker);
+    transition: background-color var(--duration-fast) var(--ease-standard),
+                box-shadow var(--duration-fast) var(--ease-standard);
   }
 
   .check__dot--pending {
     animation: check-pulse 1.2s ease-in-out infinite;
   }
+  @media (prefers-reduced-motion: reduce) {
+    .check__dot--pending {
+      animation: none;
+      opacity: var(--opacity-pulse-min);
+    }
+  }
 
   .check__dot--ok {
     background: var(--color-success);
     box-shadow: var(--shadow-glow-success);
+    transition: background-color var(--duration-fast) var(--ease-standard),
+                box-shadow var(--duration-fast) var(--ease-standard);
   }
 
   .check__dot--empty {
     background: var(--color-accent);
+    transition: background-color var(--duration-fast) var(--ease-standard);
   }
 
   .check__dot--error {
