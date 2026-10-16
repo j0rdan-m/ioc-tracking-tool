@@ -253,16 +253,10 @@
     background-color var(--duration-fast) var(--ease-standard),
     transform var(--duration-fast) var(--ease-standard);
 
-  /* Micro-animation keyframes */
-  --keyframe-pulse: 0% { opacity: var(--opacity-pulse-min); }
-    50% { opacity: 1; }
-    100% { opacity: var(--opacity-pulse-min); }
-
-  --keyframe-hover: 0% { background-color: transparent; }
-    100% { background-color: var(--color-accent-soft); }
-
-  --keyframe-focus: 0% { border-color: var(--color-border); }
-    100% { border-color: var(--color-accent); }
+  /* --keyframe-pulse, --keyframe-hover, and --keyframe-focus were removed
+   to prevent UI freeze when interacting with IoCs in the HistoryModal.
+   These keyframes caused continuous repainting that blocked the UI.
+*/
 
   /* ---------------------------------------------------------------------- *
    * 8. Category hues — quieter so content wins over decoration.             *

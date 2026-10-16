@@ -1,5 +1,6 @@
 <script>
   import { inject } from '../di/provide.js';
+  import { untrack } from 'svelte';
   import { DI_TOKENS } from '../di/tokens.js';
   import { INVESTIGATION_VERDICTS } from '../services/investigation-history.js';
   import ExportPanel from './ExportPanel.svelte';
@@ -9,6 +10,18 @@
   import { formatTimestamp } from '../utils/format-timestamp.js';
   import { collectTags, filterInvestigations, normalizeTag } from '../utils/history-filter.js';
   import AddToInvestigation from './AddToInvestigation.svelte';
+
+  /**
+   * Ensure body overflow is properly managed when modal view changes.
+   * Prevents "click blocked" issues when navigating between list and detail views.
+   */
+  function manageDetailViewOverflow() {
+    if (view === 'detail' && selected) {
+      // When detail view is active, allow scrolling/clicking behind the modal
+      // by not setting overflow: hidden. The modal itself handles focus trapping.
+      document.body.style.overflow = '';
+    }
+  }
 
   /**
    * "History" modal: the local investigation notebook. It lists the indicators
@@ -269,11 +282,19 @@
     if (!open) {
       return;
     }
-    refresh();
-    searchEl?.focus();
+    // Reload data when the modal opens, but untracked so that replacing
+    // `entries` (which creates new object references) doesn't make `selected`
+    // change and re-trigger this effect — that would be an infinite loop
+    // blocking the event loop and freezing the UI.
+    untrack(() => {
+      refresh();
+      searchEl?.focus();
+      manageDetailViewOverflow();
+    });
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = '';
+      untrack(() => manageDetailViewOverflow());
     };
   });
 </script>

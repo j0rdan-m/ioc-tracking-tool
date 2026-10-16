@@ -115,6 +115,9 @@
    * @param {string} normalized
    */
   function analyzeExtracted(normalized) {
+    // Restore body overflow before opening the next modal to prevent
+    // overflow: hidden from being permanently set during modal transitions.
+    document.body.style.overflow = '';
     extractorOpen = false;
     openFastAnalyze(normalized);
   }
@@ -127,6 +130,9 @@
    * @param {string} normalized
    */
   function analyzeFromHistory(normalized) {
+    // Restore body overflow before opening the next modal to prevent
+    // overflow: hidden from being permanently set during modal transitions.
+    document.body.style.overflow = '';
     historyOpen = false;
     openFastAnalyze(normalized);
   }
@@ -138,6 +144,9 @@
    * @param {string} normalized
    */
   function analyzeFromHeaders(normalized) {
+    // Restore body overflow before opening the next modal to prevent
+    // overflow: hidden from being permanently set during modal transitions.
+    document.body.style.overflow = '';
     emailHeadersOpen = false;
     openFastAnalyze(normalized);
   }

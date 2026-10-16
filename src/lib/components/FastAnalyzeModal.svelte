@@ -513,7 +513,6 @@
     border-radius: var(--radius-md);
     cursor: pointer;
     transition: var(--transition-colors);
-    animation: var(--keyframe-hover) var(--duration-fast) var(--ease-standard);
   }
 
   .fast__export:hover {
