@@ -44,6 +44,8 @@
   border: var(--border-width) solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
+  animation: modal-enter var(--duration-modal) var(--ease-arrive);
+  animation-fill-mode: both;
 }
 
 .modal--md {
@@ -215,4 +217,10 @@
   margin: 0;
   font-size: var(--font-size-2xs);
   color: var(--color-text-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal {
+    animation: none;
+  }
 }

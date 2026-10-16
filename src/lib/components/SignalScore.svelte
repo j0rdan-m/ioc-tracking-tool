@@ -14,6 +14,21 @@
       {score.label}{score.score === null ? '' : ` · ${score.score}/100`}
     </strong>
   </header>
+  {#if score.score != null}
+    <div
+      class="signal__gauge"
+      role="progressbar"
+      aria-label="Signal level"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-valuenow={score.score}
+    >
+      <span
+        class="signal__gauge-fill signal__gauge-fill--{score.level}"
+        style="transform: scaleX({score.score / 100})"
+      ></span>
+    </div>
+  {/if}
   {#if score.assessed && score.contributions.length > 0}
     <details>
       <summary>Why this score?</summary>
@@ -84,6 +99,39 @@
   .signal__level--high {
     color: var(--color-danger);
     background: var(--color-danger-soft);
+  }
+
+  .signal__gauge {
+    margin: var(--space-1) 0 0;
+    height: var(--gauge-height);
+    overflow: hidden;
+    background: var(--color-neutral-track);
+    border-radius: var(--radius-pill);
+  }
+
+  .signal__gauge-fill {
+    display: block;
+    height: 100%;
+    transform-origin: left;
+    transition: transform var(--duration-slow) var(--ease-standard);
+  }
+
+  .signal__gauge-fill--low {
+    background: var(--color-success);
+  }
+
+  .signal__gauge-fill--medium {
+    background: var(--color-warning);
+  }
+
+  .signal__gauge-fill--high {
+    background: var(--color-danger);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .signal__gauge-fill {
+      transition: none;
+    }
   }
 
   details {

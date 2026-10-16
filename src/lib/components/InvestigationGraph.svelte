@@ -285,6 +285,8 @@
 
   .graph__edge {
     cursor: pointer;
+    animation: graph-edge-fade var(--duration-slow) var(--ease-standard);
+    animation-fill-mode: both;
   }
 
   .graph__edge line {
@@ -309,6 +311,10 @@
 
   .graph__node {
     cursor: grab;
+    animation: graph-node-enter var(--duration-slow) var(--ease-standard);
+    animation-fill-mode: both;
+    transform-box: fill-box;
+    transform-origin: center;
   }
 
   .graph__node:active {
@@ -348,5 +354,12 @@
     margin: 0;
     color: var(--color-text-muted);
     font-size: var(--font-size-xs);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .graph__node,
+    .graph__edge {
+      animation: none;
+    }
   }
 </style>

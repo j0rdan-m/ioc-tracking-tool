@@ -57,6 +57,8 @@
    *          ms: number | null }[]}
    */
   let checks = $state([]);
+  /** check ids that just settled pending -> final: drives a micro one-shot settle animation */
+  let dotSettled = $state({});
 
   const toolById = $derived(new Map(catalog.tools.map((tool) => [tool.id, tool])));
   const deepLinks = $derived(
@@ -67,6 +69,19 @@
   const completedAnalysis = $derived(
     finishedAt === '' ? null : buildAnalysisSnapshot(checks, finishedAt),
   );
+
+  /** When a check leaves the pending state, paint a one-shot settle on its dot,
+    then clear the flag so a later re-settle (re-run) animates again. */
+  $effect(() => {
+    for (const check of checks) {
+      if (check.status !== 'pending' && !dotSettled[check.def.id]) {
+        dotSettled[check.def.id] = true;
+        setTimeout(() => {
+          delete dotSettled[check.def.id];
+        }, 220);
+      }
+    }
+  });
 
   /** @type {HTMLInputElement | undefined} */
   let inputEl = $state();
@@ -164,6 +179,7 @@
     showExport = false;
     showAddToInvestigation = false;
     checks = [];
+    dotSettled = {};
     notice = '';
   }
 
@@ -396,6 +412,7 @@
               <div class="check__head">
                 <span
                   class="check__dot"
+                  class:check__dot--settle={!!dotSettled[check.def.id]}
                   class:check__dot--ok={check.status === 'ok'}
                   class:check__dot--empty={check.status === 'empty'}
                   class:check__dot--error={check.status === 'error'}
@@ -552,13 +569,12 @@
                 box-shadow var(--duration-fast) var(--ease-standard);
   }
 
-  .check__dot--pending {
-    animation: check-pulse 1.2s ease-in-out infinite;
+  .check__dot--settle {
+    animation: check-settle var(--duration-fast) var(--ease-standard);
   }
   @media (prefers-reduced-motion: reduce) {
-    .check__dot--pending {
+    .check__dot--settle {
       animation: none;
-      opacity: var(--opacity-pulse-min);
     }
   }
 
@@ -577,16 +593,6 @@
   .check__dot--error {
     background: var(--color-danger);
     box-shadow: var(--shadow-glow-danger);
-  }
-
-  @keyframes check-pulse {
-    0%,
-    100% {
-      opacity: var(--opacity-pulse-min);
-    }
-    50% {
-      opacity: 1;
-    }
   }
 
   .check__label {

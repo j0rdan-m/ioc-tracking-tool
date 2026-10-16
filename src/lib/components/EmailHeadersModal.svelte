@@ -355,7 +355,8 @@
   .eh__ioc-type { font-size: var(--font-size-2xs); font-weight: var(--font-weight-semibold); padding: var(--pill-padding-y) var(--space-2); border-radius: var(--radius-xs); color: var(--color-text-muted); background: var(--color-surface-raised); white-space: nowrap; }
   .eh__ioc-value { font-family: var(--font-mono); font-size: var(--font-size-sm); word-break: break-all; }
   .eh__actions { display: flex; gap: var(--space-1); margin-left: auto; }
-  .eh__btn { padding: var(--space-1) var(--space-3); font: inherit; font-size: var(--font-size-xs); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-pill); background: transparent; cursor: pointer; }
+  .eh__btn { padding: var(--space-1) var(--space-3); font: inherit; font-size: var(--font-size-xs); border: var(--border-width) solid var(--color-border); border-radius: var(--radius-pill); background: transparent; cursor: pointer; transition: var(--transition-tap); }
+  .eh__btn:active:not(:disabled) { transform: scale(0.97); }
   .eh__btn--copy { color: var(--color-text-muted); }
   .eh__btn--copy:hover { color: var(--color-text); }
   .eh__btn--primary { color: var(--color-accent-contrast); background: var(--color-accent); }
@@ -460,8 +461,9 @@
   .batch__gauge-fill {
     display: block;
     height: 100%;
+    transform-origin: left;
     background: var(--color-accent);
-    transition: var(--transition-width);
+    transition: var(--transition-transform);
   }
 
   .batch__table {
@@ -777,7 +779,10 @@
                     aria-valuemax="100"
                     aria-valuenow={progress.percent}
                   >
-                    <span class="batch__gauge-fill" style="width: {progress.percent}%"></span>
+                    <span
+                      class="batch__gauge-fill"
+                      style="transform: scaleX({progress.percent / 100})"
+                    ></span>
                   </div>
                 {/if}
                 <table class="batch__table">

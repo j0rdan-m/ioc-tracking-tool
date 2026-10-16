@@ -100,6 +100,28 @@
   /** @type {import('../types.js').BatchRow[]} */
   let batchRows = $state([]);
   let analysisRunning = $state(false);
+  /** check ids that just settled pending -> final: drives a micro one-shot settle animation */
+  let dotSettled = $state({});
+
+  /** When a batch check leaves the pending state, paint a one-shot settle on its dot,
+    then clear the flag so a later re-settle animates again. */
+  $effect(() => {
+    for (const row of batchRows) {
+      for (const check of row.checkStates) {
+        const key = `${batchGeneration}:${row.ioc.id}:${check.def.id}`;
+        if (
+          check.status !== 'pending' &&
+          check.status !== 'running' &&
+          !dotSettled[key]
+        ) {
+          dotSettled[key] = true;
+          setTimeout(() => {
+            delete dotSettled[key];
+          }, 220);
+        }
+      }
+    }
+  });
   let stopping = $state(false);
   /** Ids whose detailed block is expanded. */
   /** @type {string[]} */
@@ -108,7 +130,7 @@
   let batchRun = null;
   // Incremented on every launch so a late update (or the completion) of a
   // previous batch can never overwrite the state of the current one.
-  let batchGeneration = 0;
+  let batchGeneration = $state(0);
 
   /** Check states considered final for the progress gauge. */
   /** @type {import('../types.js').BatchCheckStatus[]} */
@@ -425,6 +447,7 @@
     result = extractIocs(text);
     selectedIds = result.iocs.map((ioc) => ioc.id);
     batchRows = [];
+    dotSettled = {};
     detailIds = [];
     showAddToInvestigation = false;
     analysisRunning = false;
@@ -755,7 +778,10 @@
                   aria-valuemax="100"
                   aria-valuenow={progress.percent}
                 >
-                  <span class="batch__gauge-fill" style="width: {progress.percent}%"></span>
+                  <span
+                    class="batch__gauge-fill"
+                    style="transform: scaleX({progress.percent / 100})"
+                  ></span>
                 </div>
               {/if}
 
@@ -830,6 +856,7 @@
                                   <div class="check__head">
                                     <span
                                       class="check__dot"
+                                      class:check__dot--settle={!!dotSettled[`${batchGeneration}:${row.ioc.id}:${check.def.id}`]}
                                       class:check__dot--ok={check.status === 'ok'}
                                       class:check__dot--empty={check.status === 'empty'}
                                       class:check__dot--error={check.status === 'error'}
@@ -991,6 +1018,12 @@
     transition: var(--transition-colors);
   }
 
+  .ioc__copy:active:not(:disabled),
+  .ioc__analyze:active:not(:disabled),
+  .ioc__investigate:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
   .ioc__copy {
     color: var(--color-text-muted);
     background: transparent;
@@ -1005,6 +1038,7 @@
   .ioc__copy--copied {
     color: var(--color-success);
     border-color: var(--color-success);
+    animation: copy-fade var(--duration-fast) var(--ease-standard);
   }
 
   .ioc__analyze {
@@ -1202,8 +1236,9 @@
   .batch__gauge-fill {
     display: block;
     height: 100%;
+    transform-origin: left;
     background: var(--color-accent);
-    transition: var(--transition-width);
+    transition: var(--transition-transform);
   }
 
   .batch__table {
@@ -1321,13 +1356,12 @@
                 box-shadow var(--duration-fast) var(--ease-standard);
   }
 
-  .check__dot--pending {
-    animation: check-pulse 1.2s ease-in-out infinite;
+  .check__dot--settle {
+    animation: check-settle var(--duration-fast) var(--ease-standard);
   }
   @media (prefers-reduced-motion: reduce) {
-    .check__dot--pending {
+    .check__dot--settle {
       animation: none;
-      opacity: var(--opacity-pulse-min);
     }
   }
 
@@ -1346,16 +1380,6 @@
   .check__dot--error {
     background: var(--color-danger);
     box-shadow: var(--shadow-glow-danger);
-  }
-
-  @keyframes check-pulse {
-    0%,
-    100% {
-      opacity: var(--opacity-pulse-min);
-    }
-    50% {
-      opacity: 1;
-    }
   }
 
   .check__label {
@@ -1437,6 +1461,13 @@
     letter-spacing: var(--letter-spacing-wide);
     text-transform: uppercase;
     color: var(--color-text-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .check__dot--settle,
+    .ioc__copy--copied {
+      animation: none;
+    }
   }
 </style>
 

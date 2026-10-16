@@ -754,6 +754,13 @@
     color: var(--color-success);
     background: var(--color-success-soft);
     border-radius: var(--radius-pill);
+    animation: copy-fade var(--duration-fast) var(--ease-standard);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hist__feedback {
+      animation: none;
+    }
   }
 
   .hist__sr {
@@ -846,7 +853,13 @@
     font-weight: var(--font-weight-semibold);
     border-radius: var(--radius-pill);
     cursor: pointer;
-    transition: var(--transition-colors);
+    transition: var(--transition-tap);
+  }
+
+  .hist__primary:active:not(:disabled),
+  .hist__secondary:active:not(:disabled),
+  .hist__danger:active:not(:disabled) {
+    transform: scale(0.97);
   }
 
   .hist__primary {

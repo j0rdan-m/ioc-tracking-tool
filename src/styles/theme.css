@@ -231,6 +231,11 @@
   --duration-slow: 0.16s;
   --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
 
+  --duration-modal: 0.24s;
+  --ease-arrive: cubic-bezier(0.16, 1, 0.3, 1);
+  --modal-enter-scale: 0.96;
+  --transition-transform: transform var(--duration-slow) var(--ease-standard);
+
   --transition-colors:
     color var(--duration-fast) var(--ease-standard),
     border-color var(--duration-fast) var(--ease-standard),
@@ -253,10 +258,61 @@
     background-color var(--duration-fast) var(--ease-standard),
     transform var(--duration-fast) var(--ease-standard);
 
-  /* --keyframe-pulse, --keyframe-hover, and --keyframe-focus were removed
-   to prevent UI freeze when interacting with IoCs in the HistoryModal.
-   These keyframes caused continuous repainting that blocked the UI.
-*/
+  /* One-shot entrances and micro-feedback. Continuous / infinite keyframes are
+     intentionally absent: they caused UI freeze in HistoryModal. Components
+     gate every animation behind prefers-reduced-motion: reduce. */
+  @keyframes modal-enter {
+    from {
+      opacity: 0;
+      transform: scale(var(--modal-enter-scale)) translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  @keyframes check-settle {
+    from {
+      opacity: 0;
+      transform: scale(1.3);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes copy-fade {
+    from {
+      opacity: 0;
+      transform: scale(0.92);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes graph-node-enter {
+    from {
+      opacity: 0;
+      transform: scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes graph-edge-fade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
 
   /* ---------------------------------------------------------------------- *
    * 8. Category hues — quieter so content wins over decoration.             *
