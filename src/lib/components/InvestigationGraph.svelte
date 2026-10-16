@@ -45,6 +45,26 @@
       query,
     }),
   );
+  /** Increments whenever the filtered graph changes, forcing node/edge elements to
+     be recreated so the enter/fade CSS animations replay on every filter/analysis. */
+  let graphAnimKey = $state(0);
+  let lastGraphSize = $state(-1);
+
+  $effect(() => {
+    // Defensive check to prevent errors when filtered data is invalid
+    if (!filtered || !filtered.nodes || !filtered.relationships) {
+      return;
+    }
+
+    const size = filtered.nodes.length + filtered.relationships.length;
+    if (lastGraphSize !== -1 && size !== lastGraphSize) {
+      lastGraphSize = size;
+      graphAnimKey++;
+    } else if (lastGraphSize === -1) {
+      lastGraphSize = size;
+    }
+  });
+
   const positions = $derived(computeGraphLayout(filtered.nodes));
   const viewBox = $derived(
     `${(GRAPH_WIDTH * (1 - 1 / zoom)) / 2} ${(GRAPH_HEIGHT * (1 - 1 / zoom)) / 2} ` +
@@ -171,18 +191,22 @@
         {#each filtered.relationships as relationship (relationship.id)}
           {@const source = positionOf(relationship.sourceId)}
           {@const target = positionOf(relationship.targetId)}
-          <g class="graph__edge" class:graph__edge--selected={selectedRelationshipId === relationship.id} class:graph__edge--suspected={relationship.confidence === 'suspected'} role="button" tabindex="0" aria-label={`Relationship ${relationship.type}`} onclick={() => onSelectRelationship(relationship.id)} onkeydown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectRelationship(relationship.id); } }}>
-            <line x1={source.x} y1={source.y} x2={target.x} y2={target.y} marker-end="url(#graph-arrow)" />
-            <text x={(source.x + target.x) / 2} y={(source.y + target.y) / 2} text-anchor="middle">{relationship.type}</text>
-          </g>
+          {#key `${relationship.id}-${graphAnimKey}`}
+            <g class="graph__edge" class:graph__edge--selected={selectedRelationshipId === relationship.id} class:graph__edge--suspected={relationship.confidence === 'suspected'} role="button" tabindex="0" aria-label={`Relationship ${relationship.type}`} onclick={() => onSelectRelationship(relationship.id)} onkeydown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectRelationship(relationship.id); } }}>
+              <line x1={source.x} y1={source.y} x2={target.x} y2={target.y} marker-end="url(#graph-arrow)" />
+              <text x={(source.x + target.x) / 2} y={(source.y + target.y) / 2} text-anchor="middle">{relationship.type}</text>
+            </g>
+          {/key}
         {/each}
         {#each filtered.nodes as node (node.id)}
           {@const position = positionOf(node.id)}
-          <g class="graph__node" class:graph__node--selected={selectedNodeId === node.id} class:graph__node--match={filtered.matchIds.has(node.id)} role="button" tabindex="0" aria-label={`${node.defanged}, ${node.verdict}`} onpointerdown={(event) => startDrag(event, node)} onclick={() => onSelectNode(node.id)} onkeydown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectNode(node.id); } }}>
-            <circle cx={position.x} cy={position.y} r="18" />
-            <text class="graph__node-label" x={position.x} y={position.y + 32} text-anchor="middle">{labelFor(node)}</text>
-            <text class="graph__node-verdict" x={position.x} y={position.y + 44} text-anchor="middle">{node.verdict}</text>
-          </g>
+          {#key `${node.id}-${graphAnimKey}`}
+            <g class="graph__node" class:graph__node--selected={selectedNodeId === node.id} class:graph__node--match={filtered.matchIds.has(node.id)} role="button" tabindex="0" aria-label={`${node.defanged}, ${node.verdict}`} onpointerdown={(event) => startDrag(event, node)} onclick={() => onSelectNode(node.id)} onkeydown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelectNode(node.id); } }}>
+              <circle cx={position.x} cy={position.y} r="18" />
+              <text class="graph__node-label" x={position.x} y={position.y + 32} text-anchor="middle">{labelFor(node)}</text>
+              <text class="graph__node-verdict" x={position.x} y={position.y + 44} text-anchor="middle">{node.verdict}</text>
+            </g>
+          {/key}
         {/each}
       {/if}
     </svg>

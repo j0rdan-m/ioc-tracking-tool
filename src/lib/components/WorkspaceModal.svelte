@@ -14,6 +14,7 @@
    *           onAnalyze?: (normalized: string) => void }}
    */
   let { open = $bindable(false), catalog, onAnalyze = () => {} } = $props();
+  let closing = $state(false);
 
   /** @type {import('../services/workspace/investigation-repository.js').InvestigationRepository} */
   const repository = inject(DI_TOKENS.investigationWorkspace);
@@ -152,6 +153,16 @@
       document.body.style.overflow = '';
     };
   });
+  function handleClose() {
+    closing = true;
+    const duration = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--duration-modal')) * 1000;
+    setTimeout(() => {
+      open = false;
+    }, duration);
+  }
+
+  // Reset closing state when modal opens so exit animation can run again
+$effect(() => { if (open) closing = false; })
 </script>
 
 <svelte:window onkeydown={onKeydown} />
@@ -162,10 +173,10 @@
       type="button"
       class="modal__backdrop-button"
       aria-label="Close"
-      onclick={() => (open = false)}
+      onclick={handleClose}
     ></button>
     <div
-      class="modal modal--lg workspace-modal"
+      class="modal modal--lg workspace-modal {closing ? 'exiting' : ''}"
       role="dialog"
       aria-modal="true"
       aria-labelledby="workspace-title"
@@ -176,7 +187,7 @@
           <p class="modal__eyebrow">🕸 Investigation workspace</p>
           <h2 id="workspace-title" class="modal__title">Local investigation graph</h2>
         </div>
-        <button type="button" class="modal__close" aria-label="Close" onclick={() => (open = false)}>
+        <button type="button" class="modal__close" aria-label="Close" onclick={handleClose}>
           ✕
         </button>
       </header>

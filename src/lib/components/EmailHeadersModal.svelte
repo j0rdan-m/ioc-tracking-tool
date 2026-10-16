@@ -24,6 +24,7 @@
    *          onAnalyze?: (normalized: string) => void }}
    */
   let { open = $bindable(false), catalog, onAnalyze = () => {} } = $props();
+  let closing = $state(false);
 
   /** @type {import('../services/fast-analyze.js').FastAnalyzerService} */
   const analyzer = inject(DI_TOKENS.fastAnalyzer);
@@ -327,6 +328,16 @@
     }
   }
 
+  function handleClose() {
+    closing = true;
+    const duration = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--duration-modal')) * 1000;
+    setTimeout(() => {
+      open = false;
+    }, duration);
+  }
+
+  // Reset closing state when modal opens so exit animation can run again
+$effect(() => { if (open) closing = false; })
 </script>
 
 <style>
@@ -589,9 +600,9 @@
 {#if open}
   <div class="modal__backdrop">
     <!-- Full-size dismissal button behind the dialog: an accessible close target. -->
-    <button type="button" class="modal__backdrop-button" aria-label="Close" onclick={close}></button>
+    <button type="button" class="modal__backdrop-button" aria-label="Close" onclick={handleClose}></button>
     <div
-      class="modal modal--lg"
+      class="modal modal--lg {closing ? 'exiting' : ''}"
       role="dialog"
       aria-modal="true"
       aria-labelledby="email-headers-title"
@@ -603,7 +614,7 @@
           <p class="modal__eyebrow">📬 Email headers</p>
           <h2 id="email-headers-title" class="modal__title">Analyze email headers</h2>
         </div>
-        <button type="button" class="modal__close" aria-label="Close" onclick={close}>✕</button>
+        <button type="button" class="modal__close" aria-label="Close" onclick={handleClose}>✕</button>
       </header>
 
     <div class="modal__body">

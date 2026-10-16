@@ -47,6 +47,10 @@
   animation: modal-enter var(--duration-modal) var(--ease-arrive);
   animation-fill-mode: both;
 }
+.modal.exiting {
+  animation: modal-exit var(--duration-modal) var(--ease-depart);
+  animation-fill-mode: both;
+}
 
 .modal--md {
   --modal-width: var(--modal-width-md);
@@ -221,6 +225,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .modal {
+    animation: none;
+  }
+  .modal.exiting {
     animation: none;
   }
 }

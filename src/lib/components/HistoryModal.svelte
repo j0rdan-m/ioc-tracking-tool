@@ -35,6 +35,7 @@
    *          onAnalyze?: (normalized: string) => void }}
    */
   let { open = $bindable(false), catalog, onAnalyze = () => {} } = $props();
+  let closing = $state(false);
 
   /** @type {import('../services/investigation-history.js').InvestigationHistoryService} */
   const history = inject(DI_TOKENS.investigations);
@@ -297,6 +298,16 @@
       untrack(() => manageDetailViewOverflow());
     };
   });
+  function handleClose() {
+    closing = true;
+    const duration = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--duration-modal')) * 1000;
+    setTimeout(() => {
+      open = false;
+    }, duration);
+  }
+
+  // Reset closing state when modal opens so exit animation can run again
+$effect(() => { if (open) closing = false; })
 </script>
 
 <svelte:window onkeydown={onKeydown} />
@@ -308,10 +319,10 @@
       type="button"
       class="modal__backdrop-button"
       aria-label="Close"
-      onclick={() => (open = false)}
+      onclick={handleClose}
     ></button>
     <div
-      class="modal modal--md"
+      class="modal modal--md {closing ? 'exiting' : ''}"
       role="dialog"
       aria-modal="true"
       aria-labelledby="history-title"
@@ -322,7 +333,7 @@
           <p class="modal__eyebrow">🗒 History</p>
           <h2 id="history-title" class="modal__title">Local investigation notebook</h2>
         </div>
-        <button type="button" class="modal__close" aria-label="Close" onclick={() => (open = false)}>
+        <button type="button" class="modal__close" aria-label="Close" onclick={handleClose}>
           ✕
         </button>
       </header>

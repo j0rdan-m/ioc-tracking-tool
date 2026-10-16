@@ -24,6 +24,7 @@
    * @type {{ open?: boolean, catalog: import('../types.js').ToolCatalog, prefill?: string }}
    */
   let { open = $bindable(false), catalog, prefill = '' } = $props();
+  let closing = $state(false);
 
   /** @type {import('../services/fast-analyze.js').FastAnalyzerService} */
   const analyzer = inject(DI_TOKENS.fastAnalyzer);
@@ -57,6 +58,17 @@
    *          ms: number | null }[]}
    */
   let checks = $state([]);
+
+  function handleClose() {
+    closing = true;
+    const duration = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--duration-modal')) * 1000;
+    setTimeout(() => {
+      open = false;
+    }, duration);
+  }
+
+  // Reset closing state when modal opens so exit animation can run again
+  $effect(() => { if (open) closing = false; });
   /** check ids that just settled pending -> final: drives a micro one-shot settle animation */
   let dotSettled = $state({});
 
@@ -322,9 +334,9 @@
 {#if open}
   <div class="modal__backdrop">
     <!-- Full-size dismissal button behind the dialog: an accessible close target. -->
-    <button type="button" class="modal__backdrop-button" aria-label="Close" onclick={close}></button>
+    <button type="button" class="modal__backdrop-button" aria-label="Close" onclick={handleClose}></button>
     <div
-      class="modal"
+      class="modal {closing ? 'exiting' : ''}"
       role="dialog"
       aria-modal="true"
       aria-labelledby="fast-analyze-title"
@@ -338,7 +350,7 @@
           <h2 id="fast-analyze-title" class="modal__title"
               style="font-size: var(--font-size-xl); letter-spacing: var(--letter-spacing-tight); color: var(--color-text);">Quick lookups for one IoC</h2>
         </div>
-        <button type="button" class="modal__close" aria-label="Close" onclick={close}>✕</button>
+        <button type="button" class="modal__close" aria-label="Close" onclick={handleClose}>✕</button>
       </header>
 
       <p class="modal__hint">
