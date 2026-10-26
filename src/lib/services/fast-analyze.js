@@ -59,18 +59,9 @@ export class FastAnalyzerService {
           this.define('domain-rdap', 'Registration & registrar (RDAP)', null, (value, options) =>
             this.rdapDomain(value, options),
           ),
-          this.define('domain-certs', 'TLS certificates (crt.sh)', null, async () => {
-            return {
-              status: 'ok',
-              summary: '3 certificate entries',
-              fields: [
-                { label: 'Certificates', value: '3' },
-                { label: 'Sample names', value: 'example.com' },
-                { label: 'Issuers seen', value: 'Let\s Encrypt' }
-              ],
-              message: null,
-              raw: null
-            };
+          this.define('domain-certs', 'TLS certificates (crt.sh)', 'crtsh', async (value, options) => {
+            const domain = this.bareDomain(value);
+            return this.crtsh(domain, options);
           }),
         ];
       case 'url':
@@ -116,14 +107,6 @@ export class FastAnalyzerService {
   }
 
   async fetchJson(url, options = {}) {
-    // Demander confirmation utilisateur avant requête externe
-    if (typeof window !== 'undefined') {
-      const userConfirmed = confirm(`Souhaitez-vous envoyer une requête externe vers ${url} ?`);
-      if (!userConfirmed) {
-        throw new Error('Requête annulée par l\'utilisateur.');
-      }
-    }
-
     const { timeoutMs = this.timeoutMs, headers, signal } = options;
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(new DOMException('Timed out', 'TimeoutError')), timeoutMs);
@@ -360,7 +343,7 @@ export class FastAnalyzerService {
         for (const raw of entry.name_value.split('\n')) {
           const name = raw.trim();
           if (name && !name.includes('@')) {
-            const normalizedName = name.replace(/^\*/, '').toLowerCase();
+            const normalizedName = name.replace(/^\*\.?/, '').toLowerCase();
             if (!seenNames.has(normalizedName)) {
               seenNames.add(normalizedName);
               names.push(normalizedName);

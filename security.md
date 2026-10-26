@@ -15,18 +15,8 @@ Ce document décrit les règles de sécurité spécifiques à suivre pour l'appl
 
 ## 2. Conformité des Fichiers Existants
 ### `fast-analyze.js`
-- **Problème** : Les requêtes HTTP sont envoyées automatiquement dès qu'une entrée utilisateur est fournie.
-- **Solution** : Ajouter une confirmation utilisateur avant chaque requête externe.
-
-**Exemple de modification** :
-```javascript
-async function sendExternalRequest(url, options) {
-  if (!confirm("Souhaitez-vous envoyer cette requête externe pour analyse ?")) {
-    throw new Error("Requête annulée par l'utilisateur.");
-  }
-  return this.#fetchJson(url, options);
-}
-```
+- **Principe** : Les requêtes HTTP vers les APIs publiques keyless (ipapi.is, ipwho.is, rdap.org, crt.sh) ne sont envoyées qu'après une action utilisateur explicite (clic sur "Start" dans le modal Fast Analyze). Aucune requête n'est envoyée automatiquement à la saisie.
+- **Solution** : Pas de `confirm()` par requête — cela bloquerait les environnements sans `window` et créerait un mauvais UX. L'action explicite est le clic sur "Start" ; chaque requête rapporte son propre statut (ok / empty / error) sans bloquer les autres.
 
 ### `deep-links.js`
 - **Problème** : Génération de liens profonds qui pourraient être ouverts automatiquement.
