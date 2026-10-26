@@ -39,7 +39,9 @@ export class FastAnalyzerService {
   timeoutMs;
 
   constructor(options = {}) {
-    this.fetch = options.fetch ?? globalThis.fetch;
+    // fetch is a Window/Worker method that requires the global as `this`;
+    // bind it so calling this.fetch(...) never throws "Illegal invocation".
+    this.fetch = (options.fetch ?? globalThis.fetch).bind(globalThis);
     this.timeoutMs = options.timeoutMs ?? 12000;
   }
 
