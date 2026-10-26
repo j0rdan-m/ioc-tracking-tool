@@ -163,8 +163,10 @@ if (container.has(DI_TOKENS.toolRepository)) {
 // --- Repository with injected data source ---
 const repository = new ToolRepository(new StaticToolDataSource(catalog));
 const loaded = await repository.getCatalog();
-if (loaded.tools.length !== 35) {
-  throw new Error(`Catalog: expected 17 tools, got ${loaded.tools.length}.`);
+// Updated expected count after adding new tools (original 35 + 19 new = 54)
+const EXPECTED_TOOL_COUNT = 54;
+if (loaded.tools.length !== EXPECTED_TOOL_COUNT) {
+  throw new Error(`Catalog: expected ${EXPECTED_TOOL_COUNT} tools, got ${loaded.tools.length}.`);
 }
 
 // --- Filtering behavior ---
@@ -176,21 +178,20 @@ const reputationMatches = filterTools(loaded.tools, '', 'reputation').map((tool)
 if (reputationMatches.join(',') !== 'abuseipdb,scamalytics,urlvoid,sucuri-sitecheck,controld-link-checker,isitphishing') {
   throw new Error(`filterTools: category filter failed, got [${reputationMatches}].`);
 }
-if (countToolsByCategory(loaded.tools).get('all') !== 35) {
+if (countToolsByCategory(loaded.tools).get('all') !== EXPECTED_TOOL_COUNT) {
   throw new Error('countToolsByCategory: global count failed.');
 }
 const emailMatches = filterTools(loaded.tools, '', 'all', 'email').map((tool) => tool.id);
-if (
-  emailMatches.join(',') !==
-  'mxtoolbox,cyberchef,alienvault-otx,intelligence-x,microsoft-message-header-analyzer,google-messageheader,breach-directory,haveibeenpwned'
-) {
-  throw new Error(`filterTools: IoC type filter failed, got [${emailMatches}].`);
+const expectedEmail = 'mxtoolbox,cyberchef,alienvault-otx,intelligence-x,microsoft-message-header-analyzer,google-messageheader,breach-directory,haveibeenpwned';
+if (emailMatches.join(',') !== expectedEmail) {
+  throw new Error(`filterTools: IoC type filter failed, got [${emailMatches}], expected [${expectedEmail}].`);
 }
 const emailInDnsRecon = filterTools(loaded.tools, '', 'dns-recon', 'email').map((tool) => tool.id);
 if (emailInDnsRecon.join(',') !== 'mxtoolbox') {
   throw new Error(`filterTools: combined category + IoC filter failed, got [${emailInDnsRecon}].`);
 }
-if (countToolsByIocType(loaded.tools).get('file') !== 9) {
+// Updated file count with new tools (was 9, now includes mempool, blockscout, blockchair, osv-dev, osv)
+if (countToolsByIocType(loaded.tools).get('file') !== 14) {
   throw new Error('countToolsByIocType: file count failed.');
 }
 
@@ -527,7 +528,7 @@ const fakeFetch = async () => ({ ok: true, json: async () => catalog });
 const httpRepository = new ToolRepository(
   new HttpToolDataSource('/tools.json', { fetch: fakeFetch }),
 );
-if ((await httpRepository.getCatalog()).tools.length !== 35) {
+if ((await httpRepository.getCatalog()).tools.length !== EXPECTED_TOOL_COUNT) {
   throw new Error('HttpToolDataSource: injected fetch failed.');
 }
 
