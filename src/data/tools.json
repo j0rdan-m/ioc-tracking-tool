@@ -12,7 +12,9 @@
     { "id": "file-analysis", "label": "File & Hash Analysis" },
     { "id": "threat-intelligence", "label": "Threat Intelligence" },
     { "id": "email-analysis", "label": "Email Header Analysis" },
-    { "id": "network-bgp", "label": "Network & BGP" }
+    { "id": "network-bgp", "label": "Network & BGP" },
+    { "id": "vulnerabilities", "label": "Vulnerabilities & CVE" },
+    { "id": "blockchain", "label": "Blockchain & Crypto" }
   ],
   "iocTypes": [
     { "id": "ip", "label": "IP address" },
@@ -337,6 +339,177 @@
       "categoryId": "threat-intelligence",
       "description": "Username search engine: look up a handle across hundreds of social networks, forums, chat apps and online communities to map an identity and pivot an investigation.",
       "tags": ["username", "osint", "identity", "social-media", "pivot"]
+    },
+    {
+      "id": "threatminer",
+      "iocTypes": ["ip", "domain", "file"],
+      "name": "ThreatMiner",
+      "url": "https://www.threatminer.org/",
+      "categoryId": "threat-intelligence",
+      "description": "Search IP, domain, hash, certificate and APT reports with pivoting capabilities.",
+      "tags": ["ip", "domain", "hash", "certificate", "apt", "threat-intel"]
+    },
+    {
+      "id": "greynoise",
+      "iocTypes": ["ip"],
+      "name": "GreyNoise",
+      "url": "https://www.greynoise.io/",
+      "categoryId": "threat-intelligence",
+      "description": "Identifies Internet scanning IPs and background noise, providing context on benign vs malicious IP activity.",
+      "tags": ["ip", "scanner", "noise", "threat-intel"]
+    },
+    {
+      "id": "shodan-internetdb",
+      "iocTypes": ["ip"],
+      "name": "Shodan InternetDB",
+      "url": "https://internetdb.shodan.io/",
+      "categoryId": "threat-intelligence",
+      "description": "Fast IP lookup for open ports, services, vulnerabilities and CPE information.",
+      "tags": ["ip", "ports", "services", "cve", "vulnerabilities"]
+    },
+    {
+      "id": "mitre-attack",
+      "iocTypes": ["domain", "url"],
+      "name": "MITRE ATT&CK",
+      "url": "https://attack.mitre.org/",
+      "categoryId": "threat-intelligence",
+      "description": "Comprehensive knowledge base of adversary tactics, techniques and procedures (TTPs).",
+      "tags": ["ttp", "apt", "adversary", "framework", "threat-intel"]
+    },
+    {
+      "id": "nist-nvd",
+      "iocTypes": ["domain"],
+      "name": "NIST NVD",
+      "url": "https://nvd.nist.gov/",
+      "categoryId": "vulnerabilities",
+      "description": "National Vulnerability Database: authoritative CVE repository with CVSS scores and references.",
+      "tags": ["cve", "vulnerability", "nvd", "nist"]
+    },
+    {
+      "id": "cve-org",
+      "iocTypes": ["domain"],
+      "name": "CVE.org",
+      "url": "https://www.cve.org/",
+      "categoryId": "vulnerabilities",
+      "description": "Official CVE program website with authoritative CVE records and metadata.",
+      "tags": ["cve", "vulnerability", "cve-program"]
+    },
+    {
+      "id": "osv-dev",
+      "iocTypes": ["file"],
+      "name": "OSV.dev",
+      "url": "https://osv.dev/",
+      "categoryId": "vulnerabilities",
+      "description": "Open Source Vulnerabilities database: search vulnerabilities by package name or commit hash.",
+      "tags": ["vulnerability", "open-source", "package", "dependency"]
+    },
+    {
+      "id": "mitre-attack-vuln",
+      "iocTypes": ["domain", "url"],
+      "name": "MITRE ATT&CK",
+      "url": "https://attack.mitre.org/",
+      "categoryId": "vulnerabilities",
+      "description": "Adversary tactics, techniques and common knowledge for vulnerability context.",
+      "tags": ["ttp", "apt", "adversary", "framework"]
+    },
+    {
+      "id": "wayback",
+      "iocTypes": ["url", "domain"],
+      "name": "Wayback Machine",
+      "url": "https://web.archive.org/",
+      "categoryId": "threat-intelligence",
+      "description": "Web archive with historical snapshots of websites for OSINT and change tracking.",
+      "tags": ["archive", "history", "osint", "wayback"]
+    },
+    {
+      "id": "commoncrawl",
+      "iocTypes": ["url", "domain"],
+      "name": "Common Crawl",
+      "url": "https://commoncrawl.org/",
+      "categoryId": "threat-intelligence",
+      "description": "Massive web crawl archive for large-scale URL discovery and analysis.",
+      "tags": ["archive", "crawl", "osint", "big-data"]
+    },
+    {
+      "id": "gleif",
+      "iocTypes": ["domain"],
+      "name": "GLEIF LEI Search",
+      "url": "https://search.gleif.org/",
+      "categoryId": "threat-intelligence",
+      "description": "Legal Entity Identifier search for corporate entity verification and KYC.",
+      "tags": ["lei", "entity", "kyc", "corporate"]
+    },
+    {
+      "id": "sec-edgar",
+      "iocTypes": ["domain"],
+      "name": "SEC EDGAR",
+      "url": "https://www.sec.gov/edgar",
+      "categoryId": "threat-intelligence",
+      "description": "US SEC filings database for corporate intelligence and financial investigations.",
+      "tags": ["sec", "filings", "financial", "corporate"]
+    },
+    {
+      "id": "mempool",
+      "iocTypes": ["file"],
+      "name": "Mempool.space",
+      "url": "https://mempool.space/",
+      "categoryId": "blockchain",
+      "description": "Bitcoin mempool, blocks and address explorer with fee estimation.",
+      "tags": ["bitcoin", "blockchain", "mempool", "explorer"]
+    },
+    {
+      "id": "blockscout",
+      "iocTypes": ["file"],
+      "name": "Blockscout",
+      "url": "https://blockscout.com/",
+      "categoryId": "blockchain",
+      "description": "Multi-chain EVM block explorer for Ethereum, Polygon, BSC, Arbitrum and more.",
+      "tags": ["ethereum", "evm", "polygon", "explorer", "blockchain"]
+    },
+    {
+      "id": "blockchair",
+      "iocTypes": ["file"],
+      "name": "Blockchair",
+      "url": "https://blockchair.com/",
+      "categoryId": "blockchain",
+      "description": "Multi-chain blockchain explorer and analytics for Bitcoin, Ethereum, and 20+ chains.",
+      "tags": ["bitcoin", "ethereum", "multi-chain", "analytics", "explorer"]
+    },
+    {
+      "id": "ip-api",
+      "iocTypes": ["ip"],
+      "name": "IP-API",
+      "url": "https://ip-api.com/",
+      "categoryId": "enrichment",
+      "description": "Free IP geolocation API with ASN, ISP, organization and location data.",
+      "tags": ["ip", "geolocation", "asn", "isp", "api"]
+    },
+    {
+      "id": "db-ip",
+      "iocTypes": ["ip"],
+      "name": "DB-IP",
+      "url": "https://db-ip.com/",
+      "categoryId": "enrichment",
+      "description": "IP geolocation and network intelligence API with free tier.",
+      "tags": ["ip", "geolocation", "api", "network"]
+    },
+    {
+      "id": "ripestat",
+      "iocTypes": ["ip"],
+      "name": "RIPEstat",
+      "url": "https://stat.ripe.net/",
+      "categoryId": "enrichment",
+      "description": "RIPE NCC service for IP routing, ASN, abuse contact and historical data.",
+      "tags": ["ip", "asn", "bgp", "ripe", "routing"]
+    },
+    {
+      "id": "icann-lookup",
+      "iocTypes": ["domain"],
+      "name": "ICANN Lookup",
+      "url": "https://lookup.icann.org/",
+      "categoryId": "dns-recon",
+      "description": "Official ICANN RDAP/WHOIS lookup for domain registration data.",
+      "tags": ["domain", "rdap", "whois", "icann", "registration"]
     }
   ]
 }
