@@ -19,15 +19,15 @@ Ce document décrit les règles de sécurité spécifiques à suivre pour l'appl
 - **Solution** : Pas de `confirm()` par requête — cela bloquerait les environnements sans `window` et créerait un mauvais UX. L'action explicite est le clic sur "Start" ; chaque requête rapporte son propre statut (ok / empty / error) sans bloquer les autres.
 
 ### `deep-links.js`
-- **Problème** : Génération de liens profonds qui pourraient être ouverts automatiquement.
-- **Solution** : Afficher les liens de manière interactive et demander une confirmation avant l'ouverture.
+- **Principe** : Les liens profonds ("go further") sont affichés comme des boutons cliquables ; aucune ouverture automatique. L'analyste choisit volontairement d'ouvrir l'outil externe dans un nouvel onglet.
+- **Solution** : Pas de `confirm()` — chaque lien est un `<a>` explicite avec `target="_blank" rel="noopener noreferrer"`, ouvert uniquement sur clic utilisateur.
 
 ---
 
 ## 3. Bonnes Pratiques pour la Sécurité
 ### Pas d'Envoi Automatique de Données
 - **Règle** : Ne pas envoyer automatiquement des données IoC, des en-têtes d'emails ou des logs vers des serveurs tiers.
-- **Exemple** : Utiliser une confirmation utilisateur avant toute requête externe.
+- **Exemple** : Les requêtes vers les APIs keyless (ipapi.is, rdap.org, crt.sh) ne partent qu'après un clic explicite sur "Start" dans le modal Fast Analyze ; chaque requête rapporte son propre statut (ok / empty / error) sans bloquer les autres.
 
 ### Pas de Verdicts Automatiques
 - **Règle** : Afficher les résultats des analyses comme des données inertes sans interprétation automatique.
@@ -50,16 +50,14 @@ Ce document décrit les règles de sécurité spécifiques à suivre pour l'appl
 ---
 
 ## 5. Exemple de Code Sécurisé
-### Exemple de Requête avec Confirmation Utilisateur
+### Exemple de Requête avec Action Utilisateur Explicite
 ```javascript
-async function sendIoCAnalysis(ioc) {
-  if (!confirm("Souhaitez-vous envoyer cette IoC pour analyse ?")) {
-    return;
-  }
-  // Code pour envoyer l'IoC au service externe
-  const response = await fetch(`https://api.example.com/analyze?ioc=${ioc}`);
-  const data = await response.json();
-  return data;
+async function sendIoCAnalysis(ioc, { fetch = globalThis.fetch } = {}) {
+  // L'appel n'intervient qu'après un clic explicite sur "Start" dans le modal.
+  // Chaque requête est indépendante : un échec ne bloque pas les autres.
+  const response = await fetch(`https://api.example.com/analyze?ioc=${encodeURIComponent(ioc)}`);
+  if (!response.ok) throw new Error(`Provider error: ${response.status}`);
+  return response.json();
 }
 ```
 
